@@ -10,7 +10,7 @@ Dashboard statis (HTML + Chart.js) yang membaca data **realtime** langsung dari 
 ## Halaman (tab)
 
 - `/` (`index.html`, tab **OEE**) — Dashboard harian produksi (output, reject, speed)
-- `/planning` (`planning.html`, tab **Planning**) — Raw material + forecast finished good
+- `/planning` (`planning.html`, tab **Planning**) — Review mingguan planning vs realisasi (BBT/BBB/Repack, Mei–Okt 2026)
 
 ## Jalankan lokal
 

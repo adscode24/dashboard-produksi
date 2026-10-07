@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard Planning Production - Realtime</title>
+<title>Dashboard Planning - Review vs Realisasi</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
@@ -13,11 +13,13 @@
   header { padding:18px 24px; background:#020617; border-bottom:1px solid #1e293b; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
   header h1 { margin:0; font-size:20px; }
   header p { margin:2px 0 0; color:var(--muted); font-size:13px; }
-  header a { color:#93c5fd; font-size:13px; text-decoration:none; border:1px solid #334155; padding:6px 12px; border-radius:8px; }
   .badge { display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700; }
   .live { background:#052e16; color:#4ade80; border:1px solid #16a34a; }
   .err { background:#450a0a; color:#fca5a5; border:1px solid #ef4444; }
   .loading { background:#422006; color:#fcd34d; border:1px solid #f59e0b; }
+  .tabs { display:flex; gap:8px; padding:12px 24px 0; max-width:1350px; margin:0 auto; }
+  .tabs a { padding:8px 22px; border-radius:10px 10px 0 0; text-decoration:none; font-weight:700; font-size:14px; color:var(--muted); background:#020617; border:1px solid #1e293b; border-bottom:none; }
+  .tabs a.active { color:#fff; background:var(--card); border-color:#475569; }
   .wrap { padding:20px 24px 40px; max-width:1350px; margin:0 auto; }
   .controls { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; align-items:end; background:var(--card); padding:14px; border-radius:12px; }
   .controls label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
@@ -33,7 +35,7 @@
   @media(max-width:900px){ .grid2{grid-template-columns:1fr;} }
   .card { background:var(--card); border-radius:12px; padding:16px; margin:12px 0; }
   .card h3 { margin:0 0 10px; font-size:15px; }
-  .card canvas { max-height:380px; }
+  .card canvas { max-height:360px; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th, td { padding:8px 10px; border-bottom:1px solid #334155; text-align:left; white-space:nowrap; }
   th { color:var(--muted); font-size:12px; text-transform:uppercase; position:sticky; top:0; background:var(--card); }
@@ -42,21 +44,20 @@
   .bar { height:8px; border-radius:4px; background:#334155; margin-top:4px; min-width:80px; }
   .bar > div { height:8px; border-radius:4px; background:#22c55e; }
   .over { color:#f87171; font-weight:700; }
+  .notes li { margin-bottom:6px; font-size:13px; color:#e2e8f0; }
   footer { color:var(--muted); font-size:12px; margin-top:18px; }
   code { background:#020617; padding:2px 6px; border-radius:6px; }
-  .tabs { display:flex; gap:8px; padding:12px 24px 0; max-width:1350px; margin:0 auto; }
-  .tabs a { padding:8px 22px; border-radius:10px 10px 0 0; text-decoration:none; font-weight:700; font-size:14px; color:var(--muted); background:#020617; border:1px solid #1e293b; border-bottom:none; }
-  .tabs a.active { color:#fff; background:var(--card); border-color:#475569; }
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>📋 Dashboard Planning Production</h1>
-    <p id="meta">Periode - • Update otomatis tiap <b id="intervalLabel">60</b> detik • <span id="lastUpdate">-</span></p>
+    <h1>📋 Dashboard Planning — Review vs Realisasi</h1>
+    <p id="meta">Memuat… • Update otomatis tiap <b id="intervalLabel">60</b> detik • <span id="lastUpdate">-</span></p>
   </div>
   <div>
     <span id="status" class="badge loading">Memuat…</span>
+    <div style="font-size:12px;color:#94a3b8;margin-top:6px;text-align:right">Next refresh: <span id="countdown">-</span>s <button id="btnRefresh" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid #475569;background:#1e293b;color:#fff;cursor:pointer">↻ Refresh</button></div>
   </div>
 </header>
 
@@ -64,52 +65,72 @@
 
 <div class="wrap">
   <div class="controls">
-    <div><label>Kategori (Raw Material)</label><select id="fKat"><option value="">Semua</option></select></div>
-    <div><label>Cari produk / material</label><input id="q" placeholder="cth: patty, kentang…" style="width:220px"></div>
+    <div><label>Periode review</label><select id="fPeriode" style="max-width:300px"></select></div>
+    <div><label>Grup</label><select id="fGrup"><option value="">Semua</option><option>BBT</option><option>BBB</option><option>REPACK</option></select></div>
+    <div><label>Cari item</label><input id="q" placeholder="cth: patty, kentang…" style="width:200px"></div>
     <div><label>Auto-refresh (detik)</label><input id="fInterval" type="number" value="60" min="15" style="width:90px"></div>
-    <div><label>&nbsp;</label><button id="btnRefresh" class="secondary">↻ Refresh</button> <button id="btnReset" class="secondary">Reset</button></div>
-    <div style="margin-left:auto;font-size:12px;color:#94a3b8">Next refresh: <span id="countdown">-</span>s</div>
+    <div><label>&nbsp;</label><button id="btnReset" class="secondary">Reset</button></div>
   </div>
 
   <div class="kpis" id="kpis"></div>
 
-  <div class="card"><h3>Raw Material — Planning vs Aktual (Kg)</h3><canvas id="chRM"></canvas></div>
-  <div class="card"><h3>Finished Good — Planning vs Aktual (Pack)</h3><canvas id="chFG"></canvas></div>
-  <div class="card"><h3>Finished Good — Capaian vs Planning (%) <span style="color:#94a3b8;font-weight:400">— garis = target 100%</span></h3><canvas id="chAch"></canvas></div>
+  <div class="card"><h3>Plan vs Aktual per Item — <span id="capPeriode">-</span> (pack)</h3><canvas id="chItem"></canvas></div>
+  <div class="card"><h3>Tren Mingguan — Total Plan vs Aktual per Periode (pack)</h3><canvas id="chTrend"></canvas></div>
+  <div class="card"><h3>Capaian Aktual vs Plan per Item (%) — <span id="capPeriode2">-</span> <span style="color:#94a3b8;font-weight:400">— garis = target 100%</span></h3><canvas id="chAch"></canvas></div>
 
   <div class="card">
-    <h3>Raw Material Detail (<span id="rmCount">0</span> item)</h3>
-    <div class="tblwrap"><table id="tblRM"><thead></thead><tbody></tbody></table></div>
+    <h3>Rekap per Periode (sesuai filter grup)</h3>
+    <div class="tblwrap"><table id="tblRekap"><thead></thead><tbody></tbody></table></div>
   </div>
   <div class="card">
-    <h3>Finished Good Detail (<span id="fgCount">0</span> item)</h3>
-    <div class="tblwrap"><table id="tblFG"><thead></thead><tbody></tbody></table></div>
+    <h3>Detail Item — <span id="detPeriode">-</span> (<span id="detCount">0</span> item)</h3>
+    <div class="tblwrap"><table id="tblDetail"><thead></thead><tbody></tbody></table></div>
+  </div>
+  <div class="card">
+    <h3>Rincian Harian — <span id="dayPeriode">-</span></h3>
+    <div class="tblwrap"><table id="tblDaily"><thead></thead><tbody></tbody></table></div>
+  </div>
+  <div class="card">
+    <h3>Catatan Periode — <span id="notePeriode">-</span></h3>
+    <ul class="notes" id="notes"></ul>
   </div>
 
   <footer>
-    Sumber realtime: <code>docs.google.com/.../export?format=csv</code> — setiap ada perubahan di Spreadsheet, dashboard ikut update tanpa upload ulang. Pastikan sharing = <b>Anyone with the link → Viewer</b>. Angka memakai format ribuan koma (<code>36,000</code> → 36000), <code>-</code> = 0.
+    Sumber realtime: <code>docs.google.com/.../export?format=csv</code> — setiap ada perubahan di Spreadsheet, dashboard ikut update tanpa upload ulang. Pastikan sharing = <b>Anyone with the link → Viewer</b>. Angka format Indonesia (<code>1.700</code> → 1700), <code>-</code> = 0, <code>#DIV/0!</code> diabaikan. Entri bernilai nol semua disembunyikan.
   </footer>
 </div>
 
 <script>
 // ===== KONFIGURASI =====
-const SHEET_ID = "1h_bgzN_xmzWkLqGd6kp8z-hsmUn65E9tReiQ6-KYlFI";
-const GID = "1315380344";
+const SHEET_ID = "1m1cvkMpmAxSDxlDrg0nlveLZ5if4Q2D5sk_u3jTjEeI";
+const GID = "1877311";
 const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
 // =======================
 
-let RM = [], FG = [], META = {bulan:"", cakupan:"", aktual:""};
+let REVIEWS = [];
 let charts = {};
 let refreshTimer = null, countdownTimer = null, countdownSec = 60;
 
-function parseEN(v){
+// Angka format Indonesia: titik = ribuan, koma = desimal. "1.700" -> 1700, "62.336,16" -> 62336.16
+function parseID(v){
   if(v===null||v===undefined) return 0;
   v = String(v).trim();
   if(v===""||v==="-") return 0;
-  if(/#DIV|#N\/A|#REF|#VALUE/i.test(v)) return 0;
-  v = v.replace(/\s/g,"").replace(/,/g,"");
+  if(/#DIV|#N\/A|#REF|#VALUE|#NUM/i.test(v)) return 0;
+  if(/[a-zA-Z]/.test(v)) return 0; // sel berisi catatan teks -> 0 (jangan comot angka dari teks)
+  v = v.replace(/\s/g,"");
+  const m = v.match(/[\d\.,]+/);
+  if(!m) return 0;
+  v = m[0].replace(/\./g,"").replace(/,/g,".");
   const n = parseFloat(v);
   return isNaN(n)?0:n;
+}
+function parsePct(v){
+  if(v===null||v===undefined) return null;
+  v = String(v).trim();
+  if(!/%/.test(v) || /#DIV/i.test(v)) return null;
+  const n = parseFloat(v.replace("%","").replace(/\./g,"").replace(/,/g,"."));
+  return isNaN(n)?null:n;
 }
 function fmt(n, dec=0){ return n.toLocaleString("id-ID",{minimumFractionDigits:dec, maximumFractionDigits:dec}); }
 function setStatus(mode, text){
@@ -117,7 +138,88 @@ function setStatus(mode, text){
   el.className = "badge "+mode;
   el.textContent = text;
 }
-const HEAD_RX = /planning bulan|actual bulan|periode|raw material|forecast demand|planning production|^m[1-4]$|s\/d|oktober|persentase|finished good|uom/i;
+const isKindWord = s => /^(plan|aktual|%)$/i.test((s||"").trim());
+const NOTE_RX = /(tgl|tanggal|lembur|libur|rework|produksi|kurang|melebih|selisih|downtime|stock|shift|habis|plastik|kejar|target|ganti|salah|hanya|full|pack|permintaan)/i;
+const HEAD_CELL_RX = /^(plan|aktual|permintaan|produk|size|uom|pack|total|summary|highlight|note|tanggal|selisih|%)$/i;
+
+function collectNotes(rv, cells, from){
+  for(let i=from||0;i<cells.length;i++){
+    const c = (cells[i]||"").trim();
+    if(c.length>12 && /[a-zA-Z]{4}/.test(c) && NOTE_RX.test(c) && !HEAD_CELL_RX.test(c)
+      && (/\d/.test(c) || c.length>25) && rv.notes.length<12 && !rv.notes.includes(c)) rv.notes.push(c);
+  }
+}
+
+function parseSheet(rows){
+  REVIEWS = [];
+  const seen = {};
+  let cur = null, grup = null, days = [], lastRepack = "";
+  for(const r of rows){
+    const cells = (r||[]).map(c=>(c||"").trim());
+    const anyReview = cells.find(c=>/review planning/i.test(c));
+    if(anyReview){
+      cur = {periode:anyReview.replace(/review planning/i,"").trim(), days:[], entries:{}, notes:[]};
+      REVIEWS.push(cur); grup = null; days = []; lastRepack = "";
+      continue;
+    }
+    if(!cur) continue;
+    if(cells.some(c=>/^\s*planning\s+\d/i.test(c))){ cur = null; grup = null; continue; } // blok Planning -> tutup review
+    const joined = cells.join(" ");
+    const c1 = (cells[1]||"").toUpperCase();
+    if((c1==="BBT"||c1==="BBB") && /total/i.test(joined)){
+      grup = c1;
+      days = cells.slice(3,12).map(c=>c.trim()).filter(c=>c && !/total|tanggal|permintaan/i.test(c)).slice(0,7);
+      cur.days = days.slice();
+      continue;
+    }
+    if(c1==="REPACK" && cells.slice(2,12).join("").trim()===""){ grup = "REPACK"; continue; }
+    // kind bisa di kolom 2 atau 3 (layout transpos di blok baru)
+    let kind = null, size = "";
+    if(isKindWord(cells[2])){ kind = cells[2].trim().toLowerCase(); size = (cells[3]||"").trim(); }
+    else if(isKindWord(cells[3])){ kind = cells[3].trim().toLowerCase(); size = (cells[2]||"").trim(); }
+    if(kind){
+      if(kind==="%") kind = "pct";
+      let item;
+      if(grup==="REPACK"){
+        item = (cells[1]||"").trim() || size || lastRepack;
+        if(!item) continue;
+        if((cells[1]||"").trim()) lastRepack = item; else item = lastRepack;
+        size = item;
+      } else {
+        if(!size) continue;
+        item = (grup||"")+" "+size;
+      }
+      const key = item, vals = cells.slice(4,11);
+      cur.entries[key] = cur.entries[key] || {item, grup:grup||"", size, days:cur.days.slice(), uom:""};
+      const e = cur.entries[key];
+      if(kind==="plan"){
+        e.planDaily = vals.map(parseID); e.planTotal = parseID(cells[11]);
+        const p = parseID(cells[13]); if(p) e.permintaan = p;
+        const u = (cells[14]||"").trim(); if(/^(pack|kg|pcs|dus|karton)$/i.test(u)) e.uom = u.toUpperCase();
+      } else if(kind==="aktual"){
+        e.aktualDaily = vals.map(parseID); e.aktualTotal = parseID(cells[11]);
+        const pp = parsePct(cells[13]); if(pp!==null) e.pctVsPerm = pp;
+      } else {
+        e.pctDaily = vals.map(parsePct);
+        const t = parsePct(cells[11]); if(t!==null) e.pctTotal = t;
+      }
+      collectNotes(cur, cells, 12);
+      continue;
+    }
+    collectNotes(cur, cells, 0);
+  }
+  // dedupe nama periode + buang entri nol
+  for(const rv of REVIEWS){
+    for(const k of Object.keys(rv.entries)){
+      const e = rv.entries[k];
+      const allZero = (e.planTotal||0)===0 && (e.aktualTotal||0)===0 && !(e.permintaan||0)
+        && (e.planDaily||[]).every(v=>!v) && (e.aktualDaily||[]).every(v=>!v);
+      if(allZero || !e.item.trim()) delete rv.entries[k];
+    }
+    if(seen[rv.periode]) rv.periode += " (tgl "+(rv.days[0]||"?")+"-"+(rv.days[rv.days.length-1]||"?")+")";
+    seen[rv.periode] = 1;
+  }
+}
 
 async function loadData(){
   setStatus("loading","Memuat…");
@@ -125,13 +227,14 @@ async function loadData(){
     const res = await fetch(SHEET_CSV_URL + "&t=" + Date.now());
     if(!res.ok) throw new Error("HTTP "+res.status);
     const csv = await res.text();
-    const rows = Papa.parse(csv, {skipEmptyLines:false}).data;
-    parseSheet(rows);
-    buildKatOptions();
+    parseSheet(Papa.parse(csv, {skipEmptyLines:false}).data);
+    buildPeriodeOptions();
     render();
+    const first = REVIEWS[0], last = REVIEWS[REVIEWS.length-1];
     document.getElementById("meta").innerHTML =
-      `Periode ${META.cakupan||"-"} (${META.bulan||"-"}) • Aktual s/d ${META.aktual||"-"} • Update otomatis tiap <b id="intervalLabel">${document.getElementById("fInterval").value}</b> detik • <span id="lastUpdate">${new Date().toLocaleString("id-ID")}</span>`;
-    setStatus("live",`● LIVE — ${RM.length+FG.length} item`);
+      `${REVIEWS.length} periode mingguan • ${first?first.periode:"-"} s/d ${last?last.periode:"-"} • Update otomatis tiap <b id="intervalLabel">${document.getElementById("fInterval").value}</b> detik • <span id="lastUpdate">${new Date().toLocaleString("id-ID")}</span>`;
+    const n = REVIEWS.reduce((a,r)=>a+Object.keys(r.entries).length,0);
+    setStatus("live",`● LIVE — ${REVIEWS.length} periode / ${n} entri`);
     resetCountdown();
   }catch(e){
     console.error(e);
@@ -139,88 +242,81 @@ async function loadData(){
   }
 }
 
-function parseSheet(rows){
-  RM = []; FG = []; META = {bulan:"", cakupan:"", aktual:""};
-  let mode = null, lastKat = "";
-  for(const r of rows){
-    const cells = (r||[]).map(c=>(c||"").trim());
-    const joined = cells.join(" ");
-    if(/planning production/i.test(joined)){
-      const nonEmpty = cells.filter(Boolean);
-      META.bulan = nonEmpty[nonEmpty.length-1] || "";
-      continue;
-    }
-    if(/raw material production/i.test(joined)){ mode = "RM"; continue; }
-    if(/forecast demand planner/i.test(joined)){ mode = "FG"; continue; }
-    if(!mode) continue;
-    // tangkap label periode dari baris sub-header
-    if(/oktober/i.test(joined)){
-      const cov = cells.find(c=>/\d+\s*-\s*\d+.*oktober/i.test(c));
-      const akt = cells.find(c=>/^\d+\s*-\s*[A-Za-z]+$/.test(c) && !/oktober/i.test(c));
-      if(cov) META.cakupan = cov.replace(/\s+/g," ");
-      if(akt) META.aktual = akt;
-    }
-    const c1 = cells[1]||"", c2 = cells[2]||"";
-    if(!c2 || HEAD_RX.test(c2) || HEAD_RX.test(joined.slice(0,60))) continue;
-    if(mode==="RM"){
-      if(c1) lastKat = c1;
-      RM.push({ kat:lastKat, material:c2, plan:parseEN(cells[3]), actual:parseEN(cells[4]),
-        uom:cells[5]||"Kg", m1:parseEN(cells[6]), m2:parseEN(cells[7]), m3:parseEN(cells[8]), m4:parseEN(cells[9]) });
-    }else{
-      FG.push({ invt:parseEN(c1), product:c2, plan:parseEN(cells[3]), actual:parseEN(cells[4]),
-        uom:cells[5]||"Pack", m1:parseEN(cells[6]), m2:parseEN(cells[7]), m3:parseEN(cells[8]), m4:parseEN(cells[9]) });
-    }
-  }
+function buildPeriodeOptions(){
+  const f = document.getElementById("fPeriode");
+  const cur = f.value;
+  f.innerHTML = REVIEWS.map(r=>`<option>${r.periode}</option>`).join("");
+  f.value = REVIEWS.some(r=>r.periode===cur) ? cur : (REVIEWS.length?REVIEWS[REVIEWS.length-1].periode:"");
 }
 
-function buildKatOptions(){
-  const kats = [...new Set(RM.map(r=>r.kat).filter(Boolean))];
-  const f = document.getElementById("fKat"), cur = f.value;
-  f.innerHTML = '<option value="">Semua</option>'+kats.map(k=>`<option>${k}</option>`).join("");
-  if(kats.includes(cur)) f.value = cur;
-}
-
-function filtered(){
-  const kat = document.getElementById("fKat").value;
+function scopeEntries(){
+  const per = document.getElementById("fPeriode").value;
+  const g = document.getElementById("fGrup").value;
   const q = (document.getElementById("q").value||"").toLowerCase();
-  const rm = RM.filter(r=>(!kat||r.kat===kat)&&(!q||(r.kat+" "+r.material).toLowerCase().includes(q)));
-  const fg = FG.filter(r=>(!q||r.product.toLowerCase().includes(q)));
-  return {rm, fg};
+  const rv = REVIEWS.find(r=>r.periode===per);
+  const items = rv ? Object.values(rv.entries).filter(e=>
+    (!g||e.grup===g) && (!q||e.item.toLowerCase().includes(q))) : [];
+  return {rv, items};
 }
 
 function render(){
-  const {rm, fg} = filtered();
-  const sum = (a,k)=>a.reduce((x,r)=>x+r[k],0);
-  const rmPlan=sum(rm,"plan"), rmAct=sum(rm,"actual"), fgPlan=sum(fg,"plan"), fgAct=sum(fg,"actual");
-  const rmPct = rmPlan?rmAct/rmPlan*100:0, fgPct = fgPlan?fgAct/fgPlan*100:0;
-  const over = fg.filter(r=>r.plan>0&&r.actual>r.plan).length;
+  const {rv, items} = scopeEntries();
+  const g = document.getElementById("fGrup").value;
+  const sum = (a,k)=>a.reduce((x,e)=>x+(e[k]||0),0);
+  const plan = sum(items,"planTotal"), akt = sum(items,"aktualTotal"), perm = sum(items,"permintaan");
+  const pctPlan = plan?akt/plan*100:0, pctPerm = perm?akt/perm*100:0;
+  const per = rv?rv.periode:"-";
+  document.getElementById("capPeriode").textContent = per;
+  document.getElementById("capPeriode2").textContent = per;
+  document.getElementById("detPeriode").textContent = per;
+  document.getElementById("dayPeriode").textContent = per;
+  document.getElementById("notePeriode").textContent = per;
+  const over = items.filter(e=>(e.planTotal||0)>0&&(e.aktualTotal||0)>(e.planTotal||0)).length;
   const kpis = [
-    ["RM Planning", fmt(rmPlan)+" Kg", rm.length+" item material"],
-    ["RM Aktual", fmt(rmAct)+" Kg", fmt(rmPct,1)+" % dari planning"],
-    ["FG Planning", fmt(fgPlan)+" Pack", fg.length+" item finished good"],
-    ["FG Aktual", fmt(fgAct)+" Pack", fmt(fgPct,1)+" % dari planning"],
-    ["Item over-planning", over+" item", over? fg.filter(r=>r.plan>0&&r.actual>r.plan).map(r=>r.product).join("; ") : "Tidak ada (aktual ≤ planning)"],
+    ["Total Plan", fmt(plan)+" pack", items.length+" item • "+per],
+    ["Total Aktual", fmt(akt)+" pack", fmt(pctPlan,1)+" % dari plan"],
+    ["Total Permintaan", fmt(perm)+" pack", fmt(pctPerm,1)+" % terpenuhi"],
+    ["Item over-plan", over+" item", over?items.filter(e=>(e.planTotal||0)>0&&(e.aktualTotal||0)>(e.planTotal||0)).map(e=>e.item).join("; "):"Tidak ada"],
   ];
-  const colors = ["#3b82f6","#22c55e","#a78bfa","#f59e0b","#ef4444"];
+  const colors = ["#3b82f6","#22c55e","#f59e0b","#ef4444"];
   document.getElementById("kpis").innerHTML = kpis.map((k,i)=>`<div class="kpi" style="border-color:${colors[i]}"><small>${k[0]}</small><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join("");
 
-  // tabel RM
-  document.getElementById("rmCount").textContent = rm.length;
-  document.querySelector("#tblRM thead").innerHTML = "<tr><th>Kategori</th><th>Material</th><th class='num'>Planning</th><th class='num'>Aktual</th><th>Capaian</th><th class='num'>M1</th><th class='num'>M2</th><th class='num'>M3</th><th class='num'>M4</th></tr>";
-  document.querySelector("#tblRM tbody").innerHTML = rm.map(r=>{
-    const p = r.plan?r.actual/r.plan*100:0;
-    return `<tr><td>${r.kat}</td><td>${r.material}</td><td class="num">${fmt(r.plan)}</td><td class="num">${fmt(r.actual)}</td><td><span class="${p>100?'over':''}">${fmt(p,1)}%</span><div class="bar"><div style="width:${Math.min(p,100)}%"></div></div></td><td class="num">${fmt(r.m1)}</td><td class="num">${fmt(r.m2)}</td><td class="num">${fmt(r.m3)}</td><td class="num">${fmt(r.m4)}</td></tr>`;
+  // rekap per periode
+  const rows = REVIEWS.map(r=>{
+    const es = Object.values(r.entries).filter(e=>(!g||e.grup===g));
+    return {periode:r.periode, n:es.length, plan:sum(es,"planTotal"), akt:sum(es,"aktualTotal"), perm:sum(es,"permintaan")};
+  });
+  document.querySelector("#tblRekap thead").innerHTML = "<tr><th>Periode</th><th class='num'>Item</th><th class='num'>Plan</th><th class='num'>Aktual</th><th class='num'>Permintaan</th><th>Aktual vs Plan</th><th class='num'>vs Permintaan</th></tr>";
+  document.querySelector("#tblRekap tbody").innerHTML = rows.map(d=>{
+    const p = d.plan?d.akt/d.plan*100:0, pp = d.perm?d.akt/d.perm*100:0;
+    const cur2 = rv&&d.periode===rv.periode ? " style='background:#1e3a5f'" : "";
+    return `<tr${cur2}><td>${d.periode}</td><td class="num">${d.n}</td><td class="num">${fmt(d.plan)}</td><td class="num">${fmt(d.akt)}</td><td class="num">${fmt(d.perm)}</td><td><span class="${p>100?'over':''}">${d.plan?fmt(p,1)+"%":"-"}</span><div class="bar"><div style="width:${Math.min(p,100)}%${p>100?';background:#ef4444':''}"></div></div></td><td class="num">${d.perm?fmt(pp,1)+"%":"-"}</td></tr>`;
   }).join("");
 
-  // tabel FG
-  document.getElementById("fgCount").textContent = fg.length;
-  document.querySelector("#tblFG thead").innerHTML = "<tr><th>Finished Good</th><th class='num'>Fulfil. Invt</th><th class='num'>Planning</th><th class='num'>Aktual</th><th>Capaian vs Plan</th><th>Aktual vs Invt</th><th class='num'>M1</th><th class='num'>M2</th><th class='num'>M3</th><th class='num'>M4</th></tr>";
-  document.querySelector("#tblFG tbody").innerHTML = fg.map(r=>{
-    const p = r.plan?r.actual/r.plan*100:0, pi = r.invt?r.actual/r.invt*100:0;
-    return `<tr><td>${r.product}</td><td class="num">${fmt(r.invt)}</td><td class="num">${fmt(r.plan)}</td><td class="num">${fmt(r.actual)}</td><td><span class="${p>100?'over':''}">${r.plan?fmt(p,1)+"%":"-"}</span><div class="bar"><div style="width:${Math.min(p,100)}%${p>100?';background:#ef4444':''}"></div></div></td><td class="num">${r.invt?fmt(pi,2)+"%":"-"}</td><td class="num">${fmt(r.m1)}</td><td class="num">${fmt(r.m2)}</td><td class="num">${fmt(r.m3)}</td><td class="num">${fmt(r.m4)}</td></tr>`;
+  // detail item
+  document.getElementById("detCount").textContent = items.length;
+  document.querySelector("#tblDetail thead").innerHTML = "<tr><th>Item</th><th>Grup</th><th class='num'>Plan</th><th class='num'>Aktual</th><th class='num'>Permintaan</th><th>Aktual vs Plan</th><th class='num'>vs Permintaan</th><th>UoM</th></tr>";
+  document.querySelector("#tblDetail tbody").innerHTML = items.map(e=>{
+    const p = e.planTotal?e.aktualTotal/e.planTotal*100:0, pp = e.permintaan?e.aktualTotal/e.permintaan*100:0;
+    return `<tr><td>${e.item}</td><td>${e.grup}</td><td class="num">${fmt(e.planTotal||0)}</td><td class="num">${fmt(e.aktualTotal||0)}</td><td class="num">${fmt(e.permintaan||0)}</td><td><span class="${p>100?'over':''}">${e.planTotal?fmt(p,1)+"%":"-"}</span><div class="bar"><div style="width:${Math.min(p,100)}%${p>100?';background:#ef4444':''}"></div></div></td><td class="num">${e.permintaan?fmt(pp,1)+"%":(e.pctVsPerm!=null?fmt(e.pctVsPerm,0)+"%":"-")}</td><td>${e.uom||""}</td></tr>`;
   }).join("");
 
-  drawCharts(rm, fg);
+  // matriks harian
+  const days = rv&&rv.days.length?rv.days:["1","2","3","4","5","6","7"];
+  document.querySelector("#tblDaily thead").innerHTML = "<tr><th>Item</th><th>Jenis</th>"+days.map(d=>`<th class='num'>${d}</th>`).join("")+"<th class='num'>Total</th></tr>";
+  let dh = "";
+  items.forEach(e=>{
+    const pd = e.planDaily||[], ad = e.aktualDaily||[];
+    dh += `<tr><td rowspan="2">${e.item}</td><td>Plan</td>`+days.map((_,i)=>`<td class="num">${fmt(pd[i]||0)}</td>`).join("")+`<td class="num"><b>${fmt(e.planTotal||0)}</b></td></tr>`;
+    dh += `<tr><td>Aktual</td>`+days.map((_,i)=>`<td class="num">${fmt(ad[i]||0)}</td>`).join("")+`<td class="num"><b>${fmt(e.aktualTotal||0)}</b></td></tr>`;
+  });
+  document.querySelector("#tblDaily tbody").innerHTML = dh;
+
+  // catatan
+  document.getElementById("notes").innerHTML = rv&&rv.notes.length
+    ? rv.notes.map(n=>`<li>${n}</li>`).join("") : "<li style='color:#64748b'>Tidak ada catatan pada periode ini.</li>";
+
+  drawCharts(items, rows);
 }
 
 function mk(id, cfg){
@@ -228,23 +324,23 @@ function mk(id, cfg){
   charts[id] = new Chart(document.getElementById(id), cfg);
 }
 const TICK = {color:"#94a3b8"};
-function drawCharts(rm, fg){
-  mk("chRM",{type:"bar",
-    data:{labels:rm.map(r=>r.material),datasets:[
-      {label:"Planning (Kg)",data:rm.map(r=>r.plan),backgroundColor:"#3b82f6"},
-      {label:"Aktual (Kg)",data:rm.map(r=>r.actual),backgroundColor:"#22c55e"}]},
+function drawCharts(items, rows){
+  mk("chItem",{type:"bar",
+    data:{labels:items.map(e=>e.item),datasets:[
+      {label:"Plan",data:items.map(e=>e.planTotal||0),backgroundColor:"#3b82f6"},
+      {label:"Aktual",data:items.map(e=>e.aktualTotal||0),backgroundColor:"#22c55e"}]},
     options:{indexAxis:"y",responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:TICK},y:{ticks:{...TICK,font:{size:11}}}}}});
-  mk("chFG",{type:"bar",
-    data:{labels:fg.map(r=>r.product),datasets:[
-      {label:"Planning (Pack)",data:fg.map(r=>r.plan),backgroundColor:"#a78bfa"},
-      {label:"Aktual (Pack)",data:fg.map(r=>r.actual),backgroundColor:"#f59e0b"}]},
-    options:{indexAxis:"y",responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:TICK},y:{ticks:{...TICK,font:{size:11}}}}}});
+  mk("chTrend",{type:"bar",
+    data:{labels:rows.map(r=>r.periode),datasets:[
+      {label:"Plan",type:"bar",data:rows.map(r=>r.plan),backgroundColor:"rgba(59,130,246,.6)"},
+      {label:"Aktual",type:"line",data:rows.map(r=>r.akt),borderColor:"#22c55e",tension:.3,fill:false}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:{...TICK,maxRotation:60,minRotation:45,font:{size:10}}},y:{ticks:TICK}}}});
   mk("chAch",{type:"bar",
-    data:{labels:fg.map(r=>r.product),datasets:[
-      {label:"Capaian %",type:"bar",data:fg.map(r=>r.plan?+(r.actual/r.plan*100).toFixed(1):0),
-        backgroundColor:fg.map(r=>(r.plan&&r.actual>r.plan)?"#ef4444":"#22c55e")},
-      {label:"Target 100%",type:"line",data:fg.map(()=>100),borderColor:"#f59e0b",borderDash:[6,4],pointRadius:0}]},
-    options:{responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:{...TICK,font:{size:11}}},y:{ticks:{...TICK,callback:v=>v+"%"}}}}});
+    data:{labels:items.map(e=>e.item),datasets:[
+      {label:"Capaian %",type:"bar",data:items.map(e=>e.planTotal?+(e.aktualTotal/e.planTotal*100).toFixed(1):0),
+        backgroundColor:items.map(e=>(e.planTotal&&e.aktualTotal>e.planTotal)?"#ef4444":"#22c55e")},
+      {label:"Target 100%",type:"line",data:items.map(()=>100),borderColor:"#f59e0b",borderDash:[6,4],pointRadius:0}]},
+    options:{indexAxis:"y",responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:{...TICK,callback:v=>v+"%"}},y:{ticks:{...TICK,font:{size:11}}}}}});
 }
 
 function resetCountdown(){
@@ -257,8 +353,13 @@ function resetCountdown(){
 }
 
 document.getElementById("btnRefresh").onclick = loadData;
-document.getElementById("btnReset").onclick = ()=>{ document.getElementById("fKat").value=""; document.getElementById("q").value=""; render(); };
-document.getElementById("fKat").onchange = render;
+document.getElementById("btnReset").onclick = ()=>{
+  document.getElementById("fGrup").value="";
+  document.getElementById("q").value="";
+  if(REVIEWS.length) document.getElementById("fPeriode").value = REVIEWS[REVIEWS.length-1].periode;
+  render();
+};
+["fPeriode","fGrup"].forEach(id=>document.getElementById(id).onchange=render);
 document.getElementById("q").oninput = render;
 document.getElementById("fInterval").onchange = resetCountdown;
 loadData();
