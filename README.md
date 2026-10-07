@@ -7,11 +7,6 @@ Dashboard statis (HTML + Chart.js) yang membaca data **realtime** langsung dari 
 - Filter: Bulan, Shift, Produk, Leader + pencarian
 - Deploy: Vercel (static, tanpa build step)
 
-## Halaman
-
-- `index.html` — Dashboard harian produksi (output, reject, speed) dari sheet pertama
-- `planning.html` — Dashboard planning production (raw material + forecast finished good) dari sheet kedua
-
 ## Jalankan lokal
 
 Buka `index.html` di browser, atau:
