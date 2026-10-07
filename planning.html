@@ -7,57 +7,58 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
-  :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; --accent2:#3b82f6; }
-  * { box-sizing:border-box; font-family:'Segoe UI',system-ui,Arial,sans-serif; }
-  body { margin:0; background:var(--bg); color:var(--text); }
-  header { padding:18px 24px; background:#020617; border-bottom:1px solid #1e293b; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
-  header h1 { margin:0; font-size:20px; }
-  header p { margin:2px 0 0; color:var(--muted); font-size:13px; }
-  .badge { display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700; }
-  .live { background:#052e16; color:#4ade80; border:1px solid #16a34a; }
-  .err { background:#450a0a; color:#fca5a5; border:1px solid #ef4444; }
-  .loading { background:#422006; color:#fcd34d; border:1px solid #f59e0b; }
-  .tabs { display:flex; gap:8px; padding:12px 24px 0; max-width:1350px; margin:0 auto; }
-  .tabs a { padding:8px 22px; border-radius:10px 10px 0 0; text-decoration:none; font-weight:700; font-size:14px; color:var(--muted); background:#020617; border:1px solid #1e293b; border-bottom:none; }
-  .tabs a.active { color:#fff; background:var(--card); border-color:#475569; }
+  :root { --bg:#f1f5f9; --card:#ffffff; --border:#334155; --text:#0f172a; --muted:#64748b; --primary:#2563eb; --green:#16a34a; --red:#dc2626; }
+  * { box-sizing:border-box; font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif; }
+  body { margin:0; background:var(--bg); color:var(--text); font-size:14px; }
+  header { padding:16px 24px; background:#fff; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+  header h1 { margin:0; font-size:18px; font-weight:700; }
+  header p { margin:2px 0 0; color:var(--muted); font-size:12px; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+  .live { background:#dcfce7; color:#15803d; }
+  .err { background:#fee2e2; color:#b91c1c; }
+  .loading { background:#fef3c7; color:#b45309; }
+  .tabs { display:flex; gap:4px; padding:14px 24px 0; max-width:1350px; margin:0 auto; }
+  .tabs a { padding:8px 16px; text-decoration:none; font-weight:600; font-size:13px; color:var(--muted); border-bottom:2px solid transparent; }
+  .tabs a.active { color:var(--primary); border-bottom-color:var(--primary); }
   .wrap { padding:20px 24px 40px; max-width:1350px; margin:0 auto; }
-  .controls { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; align-items:end; background:var(--card); padding:14px; border-radius:12px; }
-  .controls label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
-  .controls select, .controls button, .controls input { padding:8px 10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:var(--text); font-size:14px; }
-  .controls button { cursor:pointer; background:var(--accent2); border-color:var(--accent2); font-weight:700; }
-  .controls button.secondary { background:#475569; border-color:#475569; }
-  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:16px 0; }
-  .kpi { background:var(--card); border-radius:12px; padding:14px; border-left:5px solid var(--accent2); }
-  .kpi small { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
-  .kpi .v { font-size:24px; font-weight:800; margin:6px 0 2px; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 16px; align-items:end; background:var(--card); padding:14px 16px; border:1px solid var(--border); border-radius:10px; }
+  .controls label { font-size:11px; color:var(--muted); display:block; margin-bottom:4px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+  .controls select, .controls button, .controls input { padding:7px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; color:var(--text); font-size:13px; }
+  .controls button { cursor:pointer; background:var(--primary); border-color:var(--primary); color:#fff; font-weight:600; }
+  .controls button.secondary { background:#fff; color:var(--text); }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:0 0 16px; }
+  .kpi { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+  .kpi small { color:var(--muted); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+  .kpi .v { font-size:24px; font-weight:700; margin:6px 0 2px; letter-spacing:-.5px; }
   .kpi .s { font-size:12px; color:var(--muted); }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   @media(max-width:900px){ .grid2{grid-template-columns:1fr;} }
-  .card { background:var(--card); border-radius:12px; padding:16px; margin:12px 0; }
-  .card h3 { margin:0 0 10px; font-size:15px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:18px; margin:0 0 12px; }
+  .card h3 { margin:0 0 12px; font-size:14px; font-weight:700; }
   .card canvas { max-height:360px; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
-  th, td { padding:8px 10px; border-bottom:1px solid #334155; text-align:left; white-space:nowrap; }
-  th { color:var(--muted); font-size:12px; text-transform:uppercase; position:sticky; top:0; background:var(--card); }
-  .tblwrap { overflow:auto; max-height:440px; border-radius:8px; }
+  th, td { padding:9px 12px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
+  tbody tr:hover { background:#f8fafc; }
+  th { color:var(--muted); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; position:sticky; top:0; background:var(--card); }
+  .tblwrap { overflow:auto; max-height:440px; border:1px solid var(--border); border-radius:8px; }
   .num { text-align:right; font-variant-numeric:tabular-nums; }
-  .bar { height:8px; border-radius:4px; background:#334155; margin-top:4px; min-width:80px; }
-  .bar > div { height:8px; border-radius:4px; background:#22c55e; }
-  .over { color:#f87171; font-weight:700; }
-  .notes li { margin-bottom:6px; font-size:13px; color:#e2e8f0; }
+  .bar { height:6px; border-radius:3px; background:#334155; margin-top:5px; min-width:80px; }
+  .bar > div { height:6px; border-radius:3px; background:var(--green); }
+  .over { color:var(--red); font-weight:700; }
+  .notes li { margin-bottom:6px; font-size:13px; color:#334155; }
   footer { color:var(--muted); font-size:12px; margin-top:18px; }
-  code { background:#020617; padding:2px 6px; border-radius:6px; }
+  code { background:#f8fafc; border:1px solid var(--border); padding:1px 6px; border-radius:6px; font-size:12px; }
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>📋 Dashboard Planning — Review vs Realisasi</h1>
+    <h1>Dashboard Planning — Review vs Realisasi</h1>
     <p id="meta">Memuat… • Update otomatis tiap <b id="intervalLabel">60</b> detik • <span id="lastUpdate">-</span></p>
   </div>
   <div>
     <span id="status" class="badge loading">Memuat…</span>
-    <div style="font-size:12px;color:#94a3b8;margin-top:6px;text-align:right">Next refresh: <span id="countdown">-</span>s <button id="btnRefresh" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid #475569;background:#1e293b;color:#fff;cursor:pointer">↻ Refresh</button></div>
+    <div style="font-size:12px;color:#64748b;margin-top:6px;text-align:right">Next refresh: <span id="countdown">-</span>s <button id="btnRefresh" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;cursor:pointer">↻ Refresh</button></div>
   </div>
 </header>
 
@@ -76,7 +77,7 @@
 
   <div class="card"><h3>Plan vs Aktual per Item — <span id="capPeriode">-</span> (pack)</h3><canvas id="chItem"></canvas></div>
   <div class="card"><h3>Tren Mingguan — Total Plan vs Aktual per Periode (pack)</h3><canvas id="chTrend"></canvas></div>
-  <div class="card"><h3>Capaian Aktual vs Plan per Item (%) — <span id="capPeriode2">-</span> <span style="color:#94a3b8;font-weight:400">— garis = target 100%</span></h3><canvas id="chAch"></canvas></div>
+  <div class="card"><h3>Capaian Aktual vs Plan per Item (%) — <span id="capPeriode2">-</span> <span style="color:#64748b;font-weight:400">— garis = target 100%</span></h3><canvas id="chAch"></canvas></div>
 
   <div class="card">
     <h3>Rekap per Periode (sesuai filter grup)</h3>
@@ -278,8 +279,7 @@ function render(){
     ["Total Permintaan", fmt(perm)+" pack", fmt(pctPerm,1)+" % terpenuhi"],
     ["Item over-plan", over+" item", over?items.filter(e=>(e.planTotal||0)>0&&(e.aktualTotal||0)>(e.planTotal||0)).map(e=>e.item).join("; "):"Tidak ada"],
   ];
-  const colors = ["#3b82f6","#22c55e","#f59e0b","#ef4444"];
-  document.getElementById("kpis").innerHTML = kpis.map((k,i)=>`<div class="kpi" style="border-color:${colors[i]}"><small>${k[0]}</small><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join("");
+  document.getElementById("kpis").innerHTML = kpis.map(k=>`<div class="kpi"><small>${k[0]}</small><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join("");
 
   // rekap per periode
   const rows = REVIEWS.map(r=>{
@@ -289,8 +289,8 @@ function render(){
   document.querySelector("#tblRekap thead").innerHTML = "<tr><th>Periode</th><th class='num'>Item</th><th class='num'>Plan</th><th class='num'>Aktual</th><th class='num'>Permintaan</th><th>Aktual vs Plan</th><th class='num'>vs Permintaan</th></tr>";
   document.querySelector("#tblRekap tbody").innerHTML = rows.map(d=>{
     const p = d.plan?d.akt/d.plan*100:0, pp = d.perm?d.akt/d.perm*100:0;
-    const cur2 = rv&&d.periode===rv.periode ? " style='background:#1e3a5f'" : "";
-    return `<tr${cur2}><td>${d.periode}</td><td class="num">${d.n}</td><td class="num">${fmt(d.plan)}</td><td class="num">${fmt(d.akt)}</td><td class="num">${fmt(d.perm)}</td><td><span class="${p>100?'over':''}">${d.plan?fmt(p,1)+"%":"-"}</span><div class="bar"><div style="width:${Math.min(p,100)}%${p>100?';background:#ef4444':''}"></div></div></td><td class="num">${d.perm?fmt(pp,1)+"%":"-"}</td></tr>`;
+    const cur2 = rv&&d.periode===rv.periode ? " style='background:#dbeafe'" : "";
+    return `<tr${cur2}><td>${d.periode}</td><td class="num">${d.n}</td><td class="num">${fmt(d.plan)}</td><td class="num">${fmt(d.akt)}</td><td class="num">${fmt(d.perm)}</td><td><span class="${p>100?'over':''}">${d.plan?fmt(p,1)+"%":"-"}</span><div class="bar"><div style="width:${Math.min(p,100)}%${p>100?';background:#dc2626':''}"></div></div></td><td class="num">${d.perm?fmt(pp,1)+"%":"-"}</td></tr>`;
   }).join("");
 
   // detail item
@@ -298,7 +298,7 @@ function render(){
   document.querySelector("#tblDetail thead").innerHTML = "<tr><th>Item</th><th>Grup</th><th class='num'>Plan</th><th class='num'>Aktual</th><th class='num'>Permintaan</th><th>Aktual vs Plan</th><th class='num'>vs Permintaan</th><th>UoM</th></tr>";
   document.querySelector("#tblDetail tbody").innerHTML = items.map(e=>{
     const p = e.planTotal?e.aktualTotal/e.planTotal*100:0, pp = e.permintaan?e.aktualTotal/e.permintaan*100:0;
-    return `<tr><td>${e.item}</td><td>${e.grup}</td><td class="num">${fmt(e.planTotal||0)}</td><td class="num">${fmt(e.aktualTotal||0)}</td><td class="num">${fmt(e.permintaan||0)}</td><td><span class="${p>100?'over':''}">${e.planTotal?fmt(p,1)+"%":"-"}</span><div class="bar"><div style="width:${Math.min(p,100)}%${p>100?';background:#ef4444':''}"></div></div></td><td class="num">${e.permintaan?fmt(pp,1)+"%":(e.pctVsPerm!=null?fmt(e.pctVsPerm,0)+"%":"-")}</td><td>${e.uom||""}</td></tr>`;
+    return `<tr><td>${e.item}</td><td>${e.grup}</td><td class="num">${fmt(e.planTotal||0)}</td><td class="num">${fmt(e.aktualTotal||0)}</td><td class="num">${fmt(e.permintaan||0)}</td><td><span class="${p>100?'over':''}">${e.planTotal?fmt(p,1)+"%":"-"}</span><div class="bar"><div style="width:${Math.min(p,100)}%${p>100?';background:#dc2626':''}"></div></div></td><td class="num">${e.permintaan?fmt(pp,1)+"%":(e.pctVsPerm!=null?fmt(e.pctVsPerm,0)+"%":"-")}</td><td>${e.uom||""}</td></tr>`;
   }).join("");
 
   // matriks harian
@@ -323,24 +323,24 @@ function mk(id, cfg){
   if(charts[id]) charts[id].destroy();
   charts[id] = new Chart(document.getElementById(id), cfg);
 }
-const TICK = {color:"#94a3b8"};
+const TICK = {color:"#64748b"};
 function drawCharts(items, rows){
   mk("chItem",{type:"bar",
     data:{labels:items.map(e=>e.item),datasets:[
-      {label:"Plan",data:items.map(e=>e.planTotal||0),backgroundColor:"#3b82f6"},
-      {label:"Aktual",data:items.map(e=>e.aktualTotal||0),backgroundColor:"#22c55e"}]},
-    options:{indexAxis:"y",responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:TICK},y:{ticks:{...TICK,font:{size:11}}}}}});
+      {label:"Plan",data:items.map(e=>e.planTotal||0),backgroundColor:"#2563eb"},
+      {label:"Aktual",data:items.map(e=>e.aktualTotal||0),backgroundColor:"#16a34a"}]},
+    options:{indexAxis:"y",responsive:true,plugins:{legend:{labels:{color:"#334155"}}},scales:{x:{ticks:TICK},y:{ticks:{...TICK,font:{size:11}}}}}});
   mk("chTrend",{type:"bar",
     data:{labels:rows.map(r=>r.periode),datasets:[
       {label:"Plan",type:"bar",data:rows.map(r=>r.plan),backgroundColor:"rgba(59,130,246,.6)"},
-      {label:"Aktual",type:"line",data:rows.map(r=>r.akt),borderColor:"#22c55e",tension:.3,fill:false}]},
-    options:{responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:{...TICK,maxRotation:60,minRotation:45,font:{size:10}}},y:{ticks:TICK}}}});
+      {label:"Aktual",type:"line",data:rows.map(r=>r.akt),borderColor:"#16a34a",tension:.3,fill:false}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:"#334155"}}},scales:{x:{ticks:{...TICK,maxRotation:60,minRotation:45,font:{size:10}}},y:{ticks:TICK}}}});
   mk("chAch",{type:"bar",
     data:{labels:items.map(e=>e.item),datasets:[
       {label:"Capaian %",type:"bar",data:items.map(e=>e.planTotal?+(e.aktualTotal/e.planTotal*100).toFixed(1):0),
-        backgroundColor:items.map(e=>(e.planTotal&&e.aktualTotal>e.planTotal)?"#ef4444":"#22c55e")},
-      {label:"Target 100%",type:"line",data:items.map(()=>100),borderColor:"#f59e0b",borderDash:[6,4],pointRadius:0}]},
-    options:{indexAxis:"y",responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:{...TICK,callback:v=>v+"%"}},y:{ticks:{...TICK,font:{size:11}}}}}});
+        backgroundColor:items.map(e=>(e.planTotal&&e.aktualTotal>e.planTotal)?"#dc2626":"#16a34a")},
+      {label:"Target 100%",type:"line",data:items.map(()=>100),borderColor:"#d97706",borderDash:[6,4],pointRadius:0}]},
+    options:{indexAxis:"y",responsive:true,plugins:{legend:{labels:{color:"#334155"}}},scales:{x:{ticks:{...TICK,callback:v=>v+"%"}},y:{ticks:{...TICK,font:{size:11}}}}}});
 }
 
 function resetCountdown(){
