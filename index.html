@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Summary Produksi - Realtime</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --card2:#334155; --text:#f1f5f9; --muted:#94a3b8; --accent:#22c55e; --accent2:#3b82f6; --warn:#f59e0b; --danger:#ef4444; }
+  * { box-sizing:border-box; font-family: 'Segoe UI', system-ui, Arial, sans-serif; }
+  body { margin:0; background:var(--bg); color:var(--text); }
+  header { padding:18px 24px; background:#020617; border-bottom:1px solid #1e293b; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:2px 0 0; color:var(--muted); font-size:13px; }
+  .badge { display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700; }
+  .live { background:#052e16; color:#4ade80; border:1px solid #16a34a; }
+  .err { background:#450a0a; color:#fca5a5; border:1px solid #ef4444; }
+  .loading { background:#422006; color:#fcd34d; border:1px solid #f59e0b; }
+  .wrap { padding:20px 24px 40px; max-width:1350px; margin:0 auto; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; align-items:end; background:var(--card); padding:14px; border-radius:12px; }
+  .controls label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
+  .controls select, .controls button, .controls input { padding:8px 10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:var(--text); font-size:14px; }
+  .controls button { cursor:pointer; background:var(--accent2); border-color:var(--accent2); font-weight:700; }
+  .controls button.secondary { background:#475569; border-color:#475569; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin:16px 0; }
+  .kpi { background:var(--card); border-radius:12px; padding:14px; border-left:5px solid var(--accent2); }
+  .kpi small { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+  .kpi .v { font-size:24px; font-weight:800; margin:6px 0 2px; }
+  .kpi .s { font-size:12px; color:var(--muted); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media(max-width:900px){ .grid2{grid-template-columns:1fr;} }
+  .card { background:var(--card); border-radius:12px; padding:16px; margin:12px 0; }
+  .card h3 { margin:0 0 10px; font-size:15px; }
+  .card canvas { max-height:320px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { padding:8px 10px; border-bottom:1px solid #334155; text-align:left; white-space:nowrap; }
+  th { color:var(--muted); font-size:12px; text-transform:uppercase; position:sticky; top:0; background:var(--card); }
+  .tblwrap { overflow:auto; max-height:420px; border-radius:8px; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  footer { color:var(--muted); font-size:12px; margin-top:18px; }
+  code { background:#020617; padding:2px 6px; border-radius:6px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>📊 Dashboard Summary Produksi</h1>
+    <p>Sumber: Google Spreadsheet • Update otomatis tiap <b id="intervalLabel">60</b> detik • <span id="lastUpdate">-</span></p>
+  </div>
+  <div>
+    <span id="status" class="badge loading">Memuat…</span>
+    <div style="font-size:12px;color:#94a3b8;margin-top:6px;text-align:right">Next refresh: <span id="countdown">-</span>s <button id="btnRefresh" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid #475569;background:#1e293b;color:#fff;cursor:pointer">↻ Refresh</button></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div><label>Bulan</label><select id="fBulan"><option value="">Semua</option></select></div>
+    <div><label>Shift</label><select id="fShift"><option value="">Semua</option><option>Shift 1</option><option>Shift 2</option></select></div>
+    <div><label>Produk</label><select id="fProduk"><option value="">Semua</option><option>Small</option><option>Large</option></select></div>
+    <div><label>Leader</label><select id="fLeader"><option value="">Semua</option></select></div>
+    <div><label>Auto-refresh (detik)</label><input id="fInterval" type="number" value="60" min="15" style="width:90px"></div>
+    <div><label>&nbsp;</label><button id="btnApply" class="secondary">Terapkan Filter</button></div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid2">
+    <div class="card"><h3>Tren Output Harian (pcs) — Small vs Large</h3><canvas id="chTrend"></canvas></div>
+    <div class="card"><h3>Reject Kg & Waste Kg Harian</h3><canvas id="chReject"></canvas></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Output per Bulan (pcs)</h3><canvas id="chBulan"></canvas></div>
+    <div class="card"><h3>Output per Shift / Leader / Produk</h3><canvas id="chMix"></canvas></div>
+  </div>
+  <div class="card"><h3>Speed Aktual Rata-rata (pcs/detik) per Tanggal</h3><canvas id="chSpeed"></canvas></div>
+
+  <div class="card">
+    <h3>Rekap per Tanggal (sesuai filter)</h3>
+    <div class="tblwrap"><table id="tblRekap"><thead></thead><tbody></tbody></table></div>
+  </div>
+  <div class="card">
+    <h3>Data Detail (<span id="detailCount">0</span> baris, sesuai filter) — <input id="q" placeholder="Cari tanggal / leader…" style="padding:6px 10px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#fff"></h3>
+    <div class="tblwrap"><table id="tblDetail"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <footer>
+    Cara pakai realtime: file HTML ini fetch langsung ke <code>docs.google.com/.../export?format=csv</code> milik Anda, jadi setiap ada data baru di Spreadsheet → dashboard ikut update tanpa upload ulang. Pastikan sharing Spreadsheet = <b>Anyone with the link → Viewer</b>. Untuk ganti sumber, edit konstanta <code>SHEET_CSV_URL</code> di dalam file ini.<br>
+    Format angka Indonesia otomatis dikonversi (<code>2.400,0</code> → 2400). Baris header kedua (<code>Input Tanggal…</code>) dan baris kosong otomatis diabaikan.
+  </footer>
+</div>
+
+<script>
+// ===== KONFIGURASI — GANTI JIKA SHEET/GID BERUBAH =====
+const SHEET_ID = "1WUtM91KRz_wqn-O0PUUxkmVlNH121b-lO2LprzOFIcM";
+const GID = "380089557";
+const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+// ======================================================
+
+let RAW = [];
+let charts = {};
+let refreshTimer = null, countdownTimer = null, countdownSec = 60;
+
+function parseID(v){
+  if(v===null||v===undefined) return 0;
+  v = String(v).trim();
+  if(v===""||v==="-") return 0;
+  // hapus teks tambahan mis "213 pack", "300,213 pack" -> ambil angka depan? Other Loss kadang berisi catatan, kita ambil 0 jika tidak murni angka
+  // Untuk kolom pack/pcs normal, format: 48.000 atau "2.400,0" atau "0,37"
+  // Jika ada huruf, return 0 kecuali kolom Other Loss yang kadang "300,213 pack" — kita parse angka depannya
+  const hasLetter = /[a-zA-Z]/.test(v);
+  if(hasLetter){
+    // coba ambil pola angka pertama
+    const m = v.match(/[\d\.,]+/);
+    if(!m) return 0;
+    // hanya untuk Other Loss / catatan, untuk kolom lain yang tercampur teks anggap 0? kita tetap parse untuk Other Loss saja di luar.
+    v = m[0];
+    // jika asalnya kolom pack tapi ada teks aneh seperti "26.100,0" tetap valid — lolos
+    // tapi jika kolom output pcs tercampur? tetap parse, aman.
+  }
+  v = v.replace(/\./g,"").replace(/,/g,".");
+  const n = parseFloat(v);
+  return isNaN(n)?0:n;
+}
+function fmt(n, dec=0){ return n.toLocaleString("id-ID",{minimumFractionDigits:dec, maximumFractionDigits:dec}); }
+
+function setStatus(mode, text){
+  const el = document.getElementById("status");
+  el.className = "badge "+mode;
+  el.textContent = text;
+}
+
+async function loadData(){
+  setStatus("loading","Memuat…");
+  try{
+    const url = SHEET_CSV_URL + "&t=" + Date.now(); // cegah cache
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const csv = await res.text();
+    const parsed = Papa.parse(csv, {skipEmptyLines:false});
+    const rows = parsed.data;
+    // rows[0]=header, rows[1]=subheader Input..., data mulai rows[2]
+    const data = [];
+    for(let i=2;i<rows.length;i++){
+      const r = rows[i];
+      if(!r || r.length<5) continue;
+      const tgl = (r[0]||"").trim();
+      if(!tgl) continue;
+      if(/^Input /i.test(tgl)) continue;
+      if(!r[1] && !r[2] && !r[12]) continue;
+      data.push({
+        Tanggal: tgl,
+        Bulan: (r[1]||"").trim(),
+        Shift: (r[2]||"").trim(),
+        Leader: (r[3]||"").trim(),
+        Produk: (r[4]||"").trim(),
+        ManPower: parseID(r[5]),
+        JamMulai: (r[6]||"").trim(),
+        JamSelesai: (r[7]||"").trim(),
+        OpTime: parseID(r[11]),
+        OutPcs: parseID(r[12]),
+        OutPack: parseID(r[13]),
+        RejectKg: parseID(r[14]),
+        WasteKg: parseID(r[15]),
+        RejectPcs: parseID(r[16]),
+        Switch: (r[17]||"").trim(),
+        Cycle: parseID(r[18]),
+        Speed: parseID(r[19]),
+        OtherLoss: parseID(r[20]),
+      });
+    }
+    RAW = data;
+    buildFilterOptions();
+    render();
+    document.getElementById("lastUpdate").textContent = "Update: " + new Date().toLocaleString("id-ID");
+    setStatus("live","● LIVE — "+RAW.length+" baris");
+    resetCountdown();
+  }catch(e){
+    console.error(e);
+    setStatus("err","Gagal load — cek sharing 'Anyone with link'");
+  }
+}
+
+function buildFilterOptions(){
+  const bulans = [...new Set(RAW.map(r=>r.Bulan).filter(Boolean))];
+  const leaders = [...new Set(RAW.map(r=>r.Leader).filter(Boolean))];
+  const fB = document.getElementById("fBulan"), fL = document.getElementById("fLeader");
+  const curB = fB.value, curL = fL.value;
+  fB.innerHTML = '<option value="">Semua</option>'+bulans.map(b=>`<option>${b}</option>`).join("");
+  fL.innerHTML = '<option value="">Semua</option>'+leaders.map(b=>`<option>${b}</option>`).join("");
+  if(bulans.includes(curB)) fB.value = curB;
+  if(leaders.includes(curL)) fL.value = curL;
+}
+
+function filtered(){
+  const b=document.getElementById("fBulan").value, s=document.getElementById("fShift").value,
+        p=document.getElementById("fProduk").value, l=document.getElementById("fLeader").value,
+        q=(document.getElementById("q").value||"").toLowerCase();
+  return RAW.filter(r =>
+    (!b||r.Bulan===b)&&(!s||r.Shift===s)&&(!p||r.Produk===p)&&(!l||r.Leader===l)&&
+    (!q||(r.Tanggal+r.Leader+r.Shift+r.Produk).toLowerCase().includes(q))
+  );
+}
+
+function render(){
+  const rows = filtered();
+  // KPI
+  const sum = k => rows.reduce((a,r)=>a+r[k],0);
+  const totPcs=sum("OutPcs"), totPack=sum("OutPack"), totOp=sum("OpTime"),
+        totRKg=sum("RejectKg"), totW=sum("WasteKg"), totRPcs=sum("RejectPcs"),
+        totMP=sum("ManPower");
+  const avgSpeed = rows.length? rows.reduce((a,r)=>a+r.Speed,0)/rows.length : 0;
+  const rejRate = totPcs? totRPcs/totPcs*100 : 0;
+  const uniqDates = new Set(rows.map(r=>r.Tanggal)).size;
+  const kpis = [
+    ["Total Output", fmt(totPcs)+" pcs", fmt(totPack)+" pack • "+rows.length+" baris / "+uniqDates+" hari"],
+    ["Operating Time", fmt(totOp)+" mnt", fmt(totOp/60,1)+" jam • "+fmt(totPcs/Math.max(totOp,1),0)+" pcs/mnt"],
+    ["Reject", fmt(totRKg,1)+" kg", fmt(totRPcs)+" pcs • "+fmt(rejRate,2)+" % dari output"],
+    ["Waste + Other Loss", fmt(totW,1)+" kg", "Waste "+fmt(totW,1)+" kg • Other "+fmt(sum("OtherLoss"),0)+" kg"],
+    ["Rata-rata Speed", fmt(avgSpeed,2)+" pcs/dtk", "Rata-rata cycle "+fmt(rows.length?rows.reduce((a,r)=>a+r.Cycle,0)/rows.length:0,2)+" dtk/pcs"],
+    ["Man Power (akumulasi)", fmt(totMP)+" org-shift", fmt(totPcs/Math.max(totMP,1),0)+" pcs per org-shift"],
+  ];
+  document.getElementById("kpis").innerHTML = kpis.map((k,i)=>`<div class="kpi" style="border-color:${["#3b82f6","#22c55e","#ef4444","#f59e0b","#a78bfa","#06b6d4"][i]}"><small>${k[0]}</small><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join("");
+
+  // Rekap per tanggal
+  const byDate = {};
+  rows.forEach(r=>{
+    byDate[r.Tanggal] ??= {Tanggal:r.Tanggal, OutPcs:0, OutPack:0, OpTime:0, RejectKg:0, WasteKg:0, RejectPcs:0, Small:0, Large:0, SpeedSum:0, n:0};
+    const d=byDate[r.Tanggal];
+    d.OutPcs+=r.OutPcs; d.OutPack+=r.OutPack; d.OpTime+=r.OpTime; d.RejectKg+=r.RejectKg; d.WasteKg+=r.WasteKg; d.RejectPcs+=r.RejectPcs;
+    if(r.Produk==="Small") d.Small+=r.OutPcs; else d.Large+=r.OutPcs;
+    d.SpeedSum+=r.Speed; d.n++;
+  });
+  const dates = Object.values(byDate); // urutan kemunculan = kronologis
+  document.querySelector("#tblRekap thead").innerHTML = "<tr><th>Tanggal</th><th class='num'>Output pcs</th><th class='num'>Small</th><th class='num'>Large</th><th class='num'>Pack</th><th class='num'>Op.Time</th><th class='num'>Reject Kg</th><th class='num'>Waste Kg</th><th class='num'>Reject pcs</th><th class='num'>Rej %</th><th class='num'>Speed</th></tr>";
+  document.querySelector("#tblRekap tbody").innerHTML = dates.map(d=>`<tr><td>${d.Tanggal}</td><td class="num">${fmt(d.OutPcs)}</td><td class="num">${fmt(d.Small)}</td><td class="num">${fmt(d.Large)}</td><td class="num">${fmt(d.OutPack)}</td><td class="num">${fmt(d.OpTime)}</td><td class="num">${fmt(d.RejectKg,1)}</td><td class="num">${fmt(d.WasteKg,1)}</td><td class="num">${fmt(d.RejectPcs)}</td><td class="num">${fmt(d.OutPcs?d.RejectPcs/d.OutPcs*100:0,2)}%</td><td class="num">${fmt(d.n?d.SpeedSum/d.n:0,2)}</td></tr>`).join("");
+
+  // Detail
+  document.getElementById("detailCount").textContent = rows.length;
+  document.querySelector("#tblDetail thead").innerHTML = "<tr><th>Tanggal</th><th>Bulan</th><th>Shift</th><th>Leader</th><th>Produk</th><th class='num'>MP</th><th class='num'>Op.Time</th><th class='num'>Out pcs</th><th class='num'>Pack</th><th class='num'>Reject Kg</th><th class='num'>Waste</th><th class='num'>Rej pcs</th><th>Switch</th><th class='num'>Speed</th></tr>";
+  document.querySelector("#tblDetail tbody").innerHTML = rows.map(r=>`<tr><td>${r.Tanggal}</td><td>${r.Bulan}</td><td>${r.Shift}</td><td>${r.Leader}</td><td>${r.Produk}</td><td class="num">${r.ManPower}</td><td class="num">${r.OpTime}</td><td class="num">${fmt(r.OutPcs)}</td><td class="num">${fmt(r.OutPack)}</td><td class="num">${fmt(r.RejectKg,1)}</td><td class="num">${fmt(r.WasteKg,1)}</td><td class="num">${fmt(r.RejectPcs)}</td><td>${r.Switch}</td><td class="num">${fmt(r.Speed,2)}</td></tr>`).join("");
+
+  drawCharts(dates, rows);
+}
+
+function mk(id, cfg){
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), cfg);
+}
+function drawCharts(dates, rows){
+  const labels = dates.map(d=>d.Tanggal);
+  mk("chTrend",{type:"bar",data:{labels,datasets:[
+    {label:"Small (pcs)",data:dates.map(d=>d.Small),backgroundColor:"#3b82f6",stack:"a"},
+    {label:"Large (pcs)",data:dates.map(d=>d.Large),backgroundColor:"#22c55e",stack:"a"}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:{color:"#94a3b8"},stacked:true},y:{ticks:{color:"#94a3b8"},stacked:true}}}});
+  mk("chReject",{type:"line",data:{labels,datasets:[
+    {label:"Reject Kg",data:dates.map(d=>+d.RejectKg.toFixed(1)),borderColor:"#ef4444",tension:.3},
+    {label:"Waste Kg",data:dates.map(d=>+d.WasteKg.toFixed(1)),borderColor:"#f59e0b",tension:.3}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:{color:"#94a3b8"}},y:{ticks:{color:"#94a3b8"}}}}});
+  const byBulan={}; rows.forEach(r=>{byBulan[r.Bulan]=(byBulan[r.Bulan]||0)+r.OutPcs;});
+  mk("chBulan",{type:"bar",data:{labels:Object.keys(byBulan),datasets:[{label:"Output pcs",data:Object.values(byBulan),backgroundColor:"#a78bfa"}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#94a3b8"}},y:{ticks:{color:"#94a3b8"}}}}});
+  const g = k => {const o={}; rows.forEach(r=>{o[r[k]]=(o[r[k]]||0)+r.OutPcs;}); return o;};
+  const s=g("Shift"), l=g("Leader"), p=g("Produk");
+  mk("chMix",{type:"doughnut",data:{labels:[...Object.keys(s).map(x=>"Shift:"+x),...Object.keys(l).map(x=>"Leader:"+x),...Object.keys(p).map(x=>"Produk:"+x)],
+    datasets:[{data:[...Object.values(s),...Object.values(l),...Object.values(p)],
+    backgroundColor:["#3b82f6","#22c55e","#f59e0b","#ef4444","#a78bfa","#06b6d4"]}]},
+    options:{responsive:true,plugins:{legend:{position:"bottom",labels:{color:"#e2e8f0",boxWidth:12}}}}});
+  mk("chSpeed",{type:"line",data:{labels,datasets:[{label:"Avg Speed pcs/dtk",data:dates.map(d=>+(d.n?d.SpeedSum/d.n:0).toFixed(2)),borderColor:"#06b6d4",tension:.3,fill:true,backgroundColor:"rgba(6,182,212,.15)"}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:{color:"#94a3b8"}},y:{ticks:{color:"#94a3b8"}}}}});
+}
+
+function resetCountdown(){
+  clearInterval(refreshTimer); clearInterval(countdownTimer);
+  let iv = Math.max(15, parseInt(document.getElementById("fInterval").value||"60"));
+  document.getElementById("intervalLabel").textContent = iv;
+  countdownSec = iv;
+  document.getElementById("countdown").textContent = countdownSec;
+  countdownTimer = setInterval(()=>{ countdownSec--; if(countdownSec<0) countdownSec=iv; document.getElementById("countdown").textContent = countdownSec; },1000);
+  refreshTimer = setInterval(loadData, iv*1000);
+}
+
+document.getElementById("btnRefresh").onclick = loadData;
+document.getElementById("btnApply").onclick = render;
+["fBulan","fShift","fProduk","fLeader"].forEach(id=>document.getElementById(id).onchange=render);
+document.getElementById("q").oninput = render;
+document.getElementById("fInterval").onchange = resetCountdown;
+loadData();
+</script>
+</body>
+</html>
