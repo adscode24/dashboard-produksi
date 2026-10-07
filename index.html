@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,43 +7,68 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
-  :root { --bg:#f1f5f9; --card:#ffffff; --border:#334155; --text:#0f172a; --muted:#64748b; --primary:#2563eb; --green:#16a34a; --red:#dc2626; }
+  :root, [data-theme="dark"] {
+    --bg:#0d1526; --card:#13203a; --border:#24344f;
+    --text:#e9eff8; --muted:#93a3bb;
+    --primary:#5b9bff; --green:#4ade80; --red:#f87171; --amber:#fbbf24;
+    --input:#0b1322; --hover:#182747; --track:#24344f; --code:#0b1322;
+    --blive:#4ade80; --blivebg:rgba(74,222,128,.13);
+    --berr:#f87171; --berrbg:rgba(248,113,113,.13);
+    --bload:#fbbf24; --bloadbg:rgba(251,191,36,.13);
+  }
+  [data-theme="light"] {
+    --bg:#f1f5f9; --card:#ffffff; --border:#e2e8f0;
+    --text:#0f172a; --muted:#64748b;
+    --primary:#2563eb; --green:#16a34a; --red:#dc2626; --amber:#d97706;
+    --input:#ffffff; --hover:#f8fafc; --track:#e2e8f0; --code:#f8fafc;
+    --blive:#15803d; --blivebg:#dcfce7;
+    --berr:#b91c1c; --berrbg:#fee2e2;
+    --bload:#b45309; --bloadbg:#fef3c7;
+  }
   * { box-sizing:border-box; font-family:'Segoe UI',system-ui,-apple-system,Arial,sans-serif; }
   body { margin:0; background:var(--bg); color:var(--text); font-size:14px; }
-  header { padding:16px 24px; background:#fff; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
-  header h1 { margin:0; font-size:18px; font-weight:700; }
-  header p { margin:2px 0 0; color:var(--muted); font-size:12px; }
+  header { padding:14px 24px; background:var(--card); border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+  header h1 { margin:0; font-size:17px; font-weight:700; letter-spacing:-.2px; }
+  header p { margin:3px 0 0; color:var(--muted); font-size:12px; }
+  .hdr-side { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .refresh-info { font-size:12px; color:var(--muted); }
+  .btn-ghost { padding:5px 12px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:12px; font-weight:600; cursor:pointer; }
+  .btn-ghost:hover { border-color:var(--primary); color:var(--primary); }
   .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
-  .live { background:#dcfce7; color:#15803d; }
-  .err { background:#fee2e2; color:#b91c1c; }
-  .loading { background:#fef3c7; color:#b45309; }
-  .tabs { display:flex; gap:4px; padding:14px 24px 0; max-width:1350px; margin:0 auto; }
+  .live { background:var(--blivebg); color:var(--blive); }
+  .err { background:var(--berrbg); color:var(--berr); }
+  .loading { background:var(--bloadbg); color:var(--bload); }
+  .tabs { display:flex; gap:2px; padding:12px 24px 0; max-width:1350px; margin:0 auto; }
   .tabs a { padding:8px 16px; text-decoration:none; font-weight:600; font-size:13px; color:var(--muted); border-bottom:2px solid transparent; }
+  .tabs a:hover { color:var(--text); }
   .tabs a.active { color:var(--primary); border-bottom-color:var(--primary); }
-  .wrap { padding:20px 24px 40px; max-width:1350px; margin:0 auto; }
-  .controls { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 16px; align-items:end; background:var(--card); padding:14px 16px; border:1px solid var(--border); border-radius:10px; }
-  .controls label { font-size:11px; color:var(--muted); display:block; margin-bottom:4px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
-  .controls select, .controls button, .controls input { padding:7px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; color:var(--text); font-size:13px; }
-  .controls button { cursor:pointer; background:var(--primary); border-color:var(--primary); color:#fff; font-weight:600; }
-  .controls button.secondary { background:#fff; color:var(--text); }
-  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin:0 0 16px; }
+  .wrap { padding:18px 24px 40px; max-width:1350px; margin:0 auto; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px 12px; margin:0 0 14px; align-items:end; background:var(--card); padding:14px 16px; border:1px solid var(--border); border-radius:10px; }
+  .controls label { font-size:10.5px; color:var(--muted); display:block; margin-bottom:5px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+  .controls select, .controls input { padding:7px 10px; border-radius:8px; border:1px solid var(--border); background:var(--input); color:var(--text); font-size:13px; }
+  .controls select:focus, .controls input:focus { outline:2px solid var(--primary); outline-offset:-1px; }
+  .controls button { padding:7px 14px; border-radius:8px; border:1px solid var(--primary); background:var(--primary); color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+  .controls button.secondary { background:transparent; border-color:var(--border); color:var(--text); }
+  .controls button.secondary:hover { border-color:var(--primary); color:var(--primary); }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(175px,1fr)); gap:12px; margin:0 0 14px; }
   .kpi { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
-  .kpi small { color:var(--muted); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
-  .kpi .v { font-size:24px; font-weight:700; margin:6px 0 2px; letter-spacing:-.5px; }
-  .kpi .s { font-size:12px; color:var(--muted); }
+  .kpi small { color:var(--muted); font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+  .kpi .v { font-size:25px; font-weight:700; margin:6px 0 2px; letter-spacing:-.5px; }
+  .kpi .s { font-size:12px; color:var(--muted); line-height:1.5; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   @media(max-width:900px){ .grid2{grid-template-columns:1fr;} }
   .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:18px; margin:0 0 12px; }
-  .card h3 { margin:0 0 12px; font-size:14px; font-weight:700; }
+  .card h3 { margin:0 0 12px; font-size:13.5px; font-weight:700; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .card h3 input { padding:6px 10px; border-radius:8px; border:1px solid var(--border); background:var(--input); color:var(--text); font-size:13px; font-weight:400; }
   .card canvas { max-height:320px; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th, td { padding:9px 12px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
-  tbody tr:hover { background:#f8fafc; }
-  th { color:var(--muted); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; position:sticky; top:0; background:var(--card); }
+  tbody tr:hover { background:var(--hover); }
+  th { color:var(--muted); font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; position:sticky; top:0; background:var(--card); }
   .tblwrap { overflow:auto; max-height:420px; border:1px solid var(--border); border-radius:8px; }
   .num { text-align:right; font-variant-numeric:tabular-nums; }
-  footer { color:var(--muted); font-size:12px; margin-top:18px; }
-  code { background:#f8fafc; border:1px solid var(--border); padding:1px 6px; border-radius:6px; font-size:12px; }
+  footer { color:var(--muted); font-size:12px; margin-top:18px; line-height:1.6; }
+  code { background:var(--code); border:1px solid var(--border); padding:1px 6px; border-radius:6px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -52,9 +77,11 @@
     <h1>Dashboard Summary Produksi</h1>
     <p>Sumber: Google Spreadsheet • Update otomatis tiap <b id="intervalLabel">60</b> detik • <span id="lastUpdate">-</span></p>
   </div>
-  <div>
+  <div class="hdr-side">
     <span id="status" class="badge loading">Memuat…</span>
-    <div style="font-size:12px;color:#64748b;margin-top:6px;text-align:right">Next refresh: <span id="countdown">-</span>s <button id="btnRefresh" style="margin-left:8px;padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;cursor:pointer">↻ Refresh</button></div>
+    <span class="refresh-info">Next refresh: <span id="countdown">-</span>s</span>
+    <button id="btnRefresh" class="btn-ghost">↻ Refresh</button>
+    <button id="btnTheme" class="btn-ghost" title="Ganti mode gelap / terang">☀️ Terang</button>
   </div>
 </header>
 
@@ -89,7 +116,7 @@
     <div class="tblwrap"><table id="tblRekap"><thead></thead><tbody></tbody></table></div>
   </div>
   <div class="card">
-    <h3>Data Detail (<span id="detailCount">0</span> baris, sesuai filter) — <input id="q" placeholder="Cari tanggal / leader…" style="padding:6px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#0f172a"></h3>
+    <h3>Data Detail (<span id="detailCount">0</span> baris, sesuai filter) — <input id="q" placeholder="Cari tanggal / leader…"></h3>
     <div class="tblwrap"><table id="tblDetail"><thead></thead><tbody></tbody></table></div>
   </div>
 
@@ -279,27 +306,34 @@ function mk(id, cfg){
   if(charts[id]) charts[id].destroy();
   charts[id] = new Chart(document.getElementById(id), cfg);
 }
+function pal(){
+  return document.documentElement.dataset.theme==="light"
+    ? {tick:"#64748b", legend:"#334155", grid:"rgba(15,23,42,.07)", blue:"#2563eb", green:"#16a34a", red:"#dc2626", amber:"#d97706", violet:"#7c3aed", cyan:"#0891b6", fill:"rgba(8,145,182,.12)"}
+    : {tick:"#93a3bb", legend:"#e9eff8", grid:"rgba(147,163,187,.13)", blue:"#5b9bff", green:"#4ade80", red:"#f87171", amber:"#fbbf24", violet:"#a78bfa", cyan:"#22d3ee", fill:"rgba(34,211,238,.12)"};
+}
 function drawCharts(dates, rows){
+  const P = pal();
+  const LG = {color:P.legend}, TK = {color:P.tick}, GR = {color:P.grid};
   const labels = dates.map(d=>d.Tanggal);
   mk("chTrend",{type:"bar",data:{labels,datasets:[
-    {label:"Small (pcs)",data:dates.map(d=>d.Small),backgroundColor:"#2563eb",stack:"a"},
-    {label:"Large (pcs)",data:dates.map(d=>d.Large),backgroundColor:"#16a34a",stack:"a"}]},
-    options:{responsive:true,plugins:{legend:{labels:{color:"#334155"}}},scales:{x:{ticks:{color:"#64748b"},stacked:true},y:{ticks:{color:"#64748b"},stacked:true}}}});
+    {label:"Small (pcs)",data:dates.map(d=>d.Small),backgroundColor:P.blue,stack:"a"},
+    {label:"Large (pcs)",data:dates.map(d=>d.Large),backgroundColor:P.green,stack:"a"}]},
+    options:{responsive:true,plugins:{legend:{labels:LG}},scales:{x:{ticks:TK,grid:GR,stacked:true},y:{ticks:TK,grid:GR,stacked:true}}}});
   mk("chReject",{type:"line",data:{labels,datasets:[
-    {label:"Reject Kg",data:dates.map(d=>+d.RejectKg.toFixed(1)),borderColor:"#dc2626",tension:.3},
-    {label:"Waste Kg",data:dates.map(d=>+d.WasteKg.toFixed(1)),borderColor:"#d97706",tension:.3}]},
-    options:{responsive:true,plugins:{legend:{labels:{color:"#334155"}}},scales:{x:{ticks:{color:"#64748b"}},y:{ticks:{color:"#64748b"}}}}});
+    {label:"Reject Kg",data:dates.map(d=>+d.RejectKg.toFixed(1)),borderColor:P.red,tension:.3},
+    {label:"Waste Kg",data:dates.map(d=>+d.WasteKg.toFixed(1)),borderColor:P.amber,tension:.3}]},
+    options:{responsive:true,plugins:{legend:{labels:LG}},scales:{x:{ticks:TK,grid:GR},y:{ticks:TK,grid:GR}}}});
   const byBulan={}; rows.forEach(r=>{byBulan[r.Bulan]=(byBulan[r.Bulan]||0)+r.OutPcs;});
-  mk("chBulan",{type:"bar",data:{labels:Object.keys(byBulan),datasets:[{label:"Output pcs",data:Object.values(byBulan),backgroundColor:"#7c3aed"}]},
-    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#64748b"}},y:{ticks:{color:"#64748b"}}}}});
+  mk("chBulan",{type:"bar",data:{labels:Object.keys(byBulan),datasets:[{label:"Output pcs",data:Object.values(byBulan),backgroundColor:P.violet}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:TK,grid:GR},y:{ticks:TK,grid:GR}}}});
   const g = k => {const o={}; rows.forEach(r=>{o[r[k]]=(o[r[k]]||0)+r.OutPcs;}); return o;};
   const s=g("Shift"), l=g("Leader"), p=g("Produk");
   mk("chMix",{type:"doughnut",data:{labels:[...Object.keys(s).map(x=>"Shift:"+x),...Object.keys(l).map(x=>"Leader:"+x),...Object.keys(p).map(x=>"Produk:"+x)],
     datasets:[{data:[...Object.values(s),...Object.values(l),...Object.values(p)],
-    backgroundColor:["#2563eb","#16a34a","#d97706","#dc2626","#7c3aed","#0891b6"]}]},
-    options:{responsive:true,plugins:{legend:{position:"bottom",labels:{color:"#334155",boxWidth:12}}}}});
-  mk("chSpeed",{type:"line",data:{labels,datasets:[{label:"Avg Speed pcs/dtk",data:dates.map(d=>+(d.n?d.SpeedSum/d.n:0).toFixed(2)),borderColor:"#0891b6",tension:.3,fill:true,backgroundColor:"rgba(8,145,182,.12)"}]},
-    options:{responsive:true,plugins:{legend:{labels:{color:"#334155"}}},scales:{x:{ticks:{color:"#64748b"}},y:{ticks:{color:"#64748b"}}}}});
+    backgroundColor:[P.blue,P.green,P.amber,P.red,P.violet,P.cyan]}]},
+    options:{responsive:true,plugins:{legend:{position:"bottom",labels:{color:P.legend,boxWidth:12}}}}});
+  mk("chSpeed",{type:"line",data:{labels,datasets:[{label:"Avg Speed pcs/dtk",data:dates.map(d=>+(d.n?d.SpeedSum/d.n:0).toFixed(2)),borderColor:P.cyan,tension:.3,fill:true,backgroundColor:P.fill}]},
+    options:{responsive:true,plugins:{legend:{labels:LG}},scales:{x:{ticks:TK,grid:GR},y:{ticks:TK,grid:GR}}}});
 }
 
 function resetCountdown(){
@@ -323,6 +357,19 @@ document.getElementById("btnReset").onclick = ()=>{
 ["fBulan","fShift","fProduk","fLeader","fFrom","fTo"].forEach(id=>document.getElementById(id).onchange=render);
 document.getElementById("q").oninput = render;
 document.getElementById("fInterval").onchange = resetCountdown;
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  try{ localStorage.setItem("dash-theme", t); }catch(e){}
+  const b = document.getElementById("btnTheme");
+  if(b) b.textContent = t==="dark" ? "☀️ Terang" : "🌙 Gelap";
+}
+let savedTheme = "dark";
+try{ savedTheme = localStorage.getItem("dash-theme") || "dark"; }catch(e){}
+applyTheme(savedTheme);
+document.getElementById("btnTheme").onclick = ()=>{
+  applyTheme(document.documentElement.dataset.theme==="dark" ? "light" : "dark");
+  render();
+};
 loadData();
 </script>
 </body>
