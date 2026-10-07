@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Planning Production - Realtime</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --text:#f1f5f9; --muted:#94a3b8; --accent2:#3b82f6; }
+  * { box-sizing:border-box; font-family:'Segoe UI',system-ui,Arial,sans-serif; }
+  body { margin:0; background:var(--bg); color:var(--text); }
+  header { padding:18px 24px; background:#020617; border-bottom:1px solid #1e293b; display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:2px 0 0; color:var(--muted); font-size:13px; }
+  header a { color:#93c5fd; font-size:13px; text-decoration:none; border:1px solid #334155; padding:6px 12px; border-radius:8px; }
+  .badge { display:inline-block; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700; }
+  .live { background:#052e16; color:#4ade80; border:1px solid #16a34a; }
+  .err { background:#450a0a; color:#fca5a5; border:1px solid #ef4444; }
+  .loading { background:#422006; color:#fcd34d; border:1px solid #f59e0b; }
+  .wrap { padding:20px 24px 40px; max-width:1350px; margin:0 auto; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; margin:16px 0; align-items:end; background:var(--card); padding:14px; border-radius:12px; }
+  .controls label { font-size:12px; color:var(--muted); display:block; margin-bottom:4px; }
+  .controls select, .controls button, .controls input { padding:8px 10px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:var(--text); font-size:14px; }
+  .controls button { cursor:pointer; background:var(--accent2); border-color:var(--accent2); font-weight:700; }
+  .controls button.secondary { background:#475569; border-color:#475569; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin:16px 0; }
+  .kpi { background:var(--card); border-radius:12px; padding:14px; border-left:5px solid var(--accent2); }
+  .kpi small { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+  .kpi .v { font-size:24px; font-weight:800; margin:6px 0 2px; }
+  .kpi .s { font-size:12px; color:var(--muted); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media(max-width:900px){ .grid2{grid-template-columns:1fr;} }
+  .card { background:var(--card); border-radius:12px; padding:16px; margin:12px 0; }
+  .card h3 { margin:0 0 10px; font-size:15px; }
+  .card canvas { max-height:380px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { padding:8px 10px; border-bottom:1px solid #334155; text-align:left; white-space:nowrap; }
+  th { color:var(--muted); font-size:12px; text-transform:uppercase; position:sticky; top:0; background:var(--card); }
+  .tblwrap { overflow:auto; max-height:440px; border-radius:8px; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .bar { height:8px; border-radius:4px; background:#334155; margin-top:4px; min-width:80px; }
+  .bar > div { height:8px; border-radius:4px; background:#22c55e; }
+  .over { color:#f87171; font-weight:700; }
+  footer { color:var(--muted); font-size:12px; margin-top:18px; }
+  code { background:#020617; padding:2px 6px; border-radius:6px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>📋 Dashboard Planning Production</h1>
+    <p id="meta">Periode - • Update otomatis tiap <b id="intervalLabel">60</b> detik • <span id="lastUpdate">-</span></p>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <a href="index.html">← Dashboard Harian</a>
+    <span id="status" class="badge loading">Memuat…</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div><label>Kategori (Raw Material)</label><select id="fKat"><option value="">Semua</option></select></div>
+    <div><label>Cari produk / material</label><input id="q" placeholder="cth: patty, kentang…" style="width:220px"></div>
+    <div><label>Auto-refresh (detik)</label><input id="fInterval" type="number" value="60" min="15" style="width:90px"></div>
+    <div><label>&nbsp;</label><button id="btnRefresh" class="secondary">↻ Refresh</button> <button id="btnReset" class="secondary">Reset</button></div>
+    <div style="margin-left:auto;font-size:12px;color:#94a3b8">Next refresh: <span id="countdown">-</span>s</div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card"><h3>Raw Material — Planning vs Aktual (Kg)</h3><canvas id="chRM"></canvas></div>
+  <div class="card"><h3>Finished Good — Planning vs Aktual (Pack)</h3><canvas id="chFG"></canvas></div>
+  <div class="card"><h3>Finished Good — Capaian vs Planning (%) <span style="color:#94a3b8;font-weight:400">— garis = target 100%</span></h3><canvas id="chAch"></canvas></div>
+
+  <div class="card">
+    <h3>Raw Material Detail (<span id="rmCount">0</span> item)</h3>
+    <div class="tblwrap"><table id="tblRM"><thead></thead><tbody></tbody></table></div>
+  </div>
+  <div class="card">
+    <h3>Finished Good Detail (<span id="fgCount">0</span> item)</h3>
+    <div class="tblwrap"><table id="tblFG"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <footer>
+    Sumber realtime: <code>docs.google.com/.../export?format=csv</code> — setiap ada perubahan di Spreadsheet, dashboard ikut update tanpa upload ulang. Pastikan sharing = <b>Anyone with the link → Viewer</b>. Angka memakai format ribuan koma (<code>36,000</code> → 36000), <code>-</code> = 0.
+  </footer>
+</div>
+
+<script>
+// ===== KONFIGURASI =====
+const SHEET_ID = "1h_bgzN_xmzWkLqGd6kp8z-hsmUn65E9tReiQ6-KYlFI";
+const GID = "1315380344";
+const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+// =======================
+
+let RM = [], FG = [], META = {bulan:"", cakupan:"", aktual:""};
+let charts = {};
+let refreshTimer = null, countdownTimer = null, countdownSec = 60;
+
+function parseEN(v){
+  if(v===null||v===undefined) return 0;
+  v = String(v).trim();
+  if(v===""||v==="-") return 0;
+  if(/#DIV|#N\/A|#REF|#VALUE/i.test(v)) return 0;
+  v = v.replace(/\s/g,"").replace(/,/g,"");
+  const n = parseFloat(v);
+  return isNaN(n)?0:n;
+}
+function fmt(n, dec=0){ return n.toLocaleString("id-ID",{minimumFractionDigits:dec, maximumFractionDigits:dec}); }
+function setStatus(mode, text){
+  const el = document.getElementById("status");
+  el.className = "badge "+mode;
+  el.textContent = text;
+}
+const HEAD_RX = /planning bulan|actual bulan|periode|raw material|forecast demand|planning production|^m[1-4]$|s\/d|oktober|persentase|finished good|uom/i;
+
+async function loadData(){
+  setStatus("loading","Memuat…");
+  try{
+    const res = await fetch(SHEET_CSV_URL + "&t=" + Date.now());
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const csv = await res.text();
+    const rows = Papa.parse(csv, {skipEmptyLines:false}).data;
+    parseSheet(rows);
+    buildKatOptions();
+    render();
+    document.getElementById("meta").innerHTML =
+      `Periode ${META.cakupan||"-"} (${META.bulan||"-"}) • Aktual s/d ${META.aktual||"-"} • Update otomatis tiap <b id="intervalLabel">${document.getElementById("fInterval").value}</b> detik • <span id="lastUpdate">${new Date().toLocaleString("id-ID")}</span>`;
+    setStatus("live",`● LIVE — ${RM.length+FG.length} item`);
+    resetCountdown();
+  }catch(e){
+    console.error(e);
+    setStatus("err","Gagal load — cek sharing 'Anyone with link'");
+  }
+}
+
+function parseSheet(rows){
+  RM = []; FG = []; META = {bulan:"", cakupan:"", aktual:""};
+  let mode = null, lastKat = "";
+  for(const r of rows){
+    const cells = (r||[]).map(c=>(c||"").trim());
+    const joined = cells.join(" ");
+    if(/planning production/i.test(joined)){
+      const nonEmpty = cells.filter(Boolean);
+      META.bulan = nonEmpty[nonEmpty.length-1] || "";
+      continue;
+    }
+    if(/raw material production/i.test(joined)){ mode = "RM"; continue; }
+    if(/forecast demand planner/i.test(joined)){ mode = "FG"; continue; }
+    if(!mode) continue;
+    // tangkap label periode dari baris sub-header
+    if(/oktober/i.test(joined)){
+      const cov = cells.find(c=>/\d+\s*-\s*\d+.*oktober/i.test(c));
+      const akt = cells.find(c=>/^\d+\s*-\s*[A-Za-z]+$/.test(c) && !/oktober/i.test(c));
+      if(cov) META.cakupan = cov.replace(/\s+/g," ");
+      if(akt) META.aktual = akt;
+    }
+    const c1 = cells[1]||"", c2 = cells[2]||"";
+    if(!c2 || HEAD_RX.test(c2) || HEAD_RX.test(joined.slice(0,60))) continue;
+    if(mode==="RM"){
+      if(c1) lastKat = c1;
+      RM.push({ kat:lastKat, material:c2, plan:parseEN(cells[3]), actual:parseEN(cells[4]),
+        uom:cells[5]||"Kg", m1:parseEN(cells[6]), m2:parseEN(cells[7]), m3:parseEN(cells[8]), m4:parseEN(cells[9]) });
+    }else{
+      FG.push({ invt:parseEN(c1), product:c2, plan:parseEN(cells[3]), actual:parseEN(cells[4]),
+        uom:cells[5]||"Pack", m1:parseEN(cells[6]), m2:parseEN(cells[7]), m3:parseEN(cells[8]), m4:parseEN(cells[9]) });
+    }
+  }
+}
+
+function buildKatOptions(){
+  const kats = [...new Set(RM.map(r=>r.kat).filter(Boolean))];
+  const f = document.getElementById("fKat"), cur = f.value;
+  f.innerHTML = '<option value="">Semua</option>'+kats.map(k=>`<option>${k}</option>`).join("");
+  if(kats.includes(cur)) f.value = cur;
+}
+
+function filtered(){
+  const kat = document.getElementById("fKat").value;
+  const q = (document.getElementById("q").value||"").toLowerCase();
+  const rm = RM.filter(r=>(!kat||r.kat===kat)&&(!q||(r.kat+" "+r.material).toLowerCase().includes(q)));
+  const fg = FG.filter(r=>(!q||r.product.toLowerCase().includes(q)));
+  return {rm, fg};
+}
+
+function render(){
+  const {rm, fg} = filtered();
+  const sum = (a,k)=>a.reduce((x,r)=>x+r[k],0);
+  const rmPlan=sum(rm,"plan"), rmAct=sum(rm,"actual"), fgPlan=sum(fg,"plan"), fgAct=sum(fg,"actual");
+  const rmPct = rmPlan?rmAct/rmPlan*100:0, fgPct = fgPlan?fgAct/fgPlan*100:0;
+  const over = fg.filter(r=>r.plan>0&&r.actual>r.plan).length;
+  const kpis = [
+    ["RM Planning", fmt(rmPlan)+" Kg", rm.length+" item material"],
+    ["RM Aktual", fmt(rmAct)+" Kg", fmt(rmPct,1)+" % dari planning"],
+    ["FG Planning", fmt(fgPlan)+" Pack", fg.length+" item finished good"],
+    ["FG Aktual", fmt(fgAct)+" Pack", fmt(fgPct,1)+" % dari planning"],
+    ["Item over-planning", over+" item", over? fg.filter(r=>r.plan>0&&r.actual>r.plan).map(r=>r.product).join("; ") : "Tidak ada (aktual ≤ planning)"],
+  ];
+  const colors = ["#3b82f6","#22c55e","#a78bfa","#f59e0b","#ef4444"];
+  document.getElementById("kpis").innerHTML = kpis.map((k,i)=>`<div class="kpi" style="border-color:${colors[i]}"><small>${k[0]}</small><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join("");
+
+  // tabel RM
+  document.getElementById("rmCount").textContent = rm.length;
+  document.querySelector("#tblRM thead").innerHTML = "<tr><th>Kategori</th><th>Material</th><th class='num'>Planning</th><th class='num'>Aktual</th><th>Capaian</th><th class='num'>M1</th><th class='num'>M2</th><th class='num'>M3</th><th class='num'>M4</th></tr>";
+  document.querySelector("#tblRM tbody").innerHTML = rm.map(r=>{
+    const p = r.plan?r.actual/r.plan*100:0;
+    return `<tr><td>${r.kat}</td><td>${r.material}</td><td class="num">${fmt(r.plan)}</td><td class="num">${fmt(r.actual)}</td><td><span class="${p>100?'over':''}">${fmt(p,1)}%</span><div class="bar"><div style="width:${Math.min(p,100)}%"></div></div></td><td class="num">${fmt(r.m1)}</td><td class="num">${fmt(r.m2)}</td><td class="num">${fmt(r.m3)}</td><td class="num">${fmt(r.m4)}</td></tr>`;
+  }).join("");
+
+  // tabel FG
+  document.getElementById("fgCount").textContent = fg.length;
+  document.querySelector("#tblFG thead").innerHTML = "<tr><th>Finished Good</th><th class='num'>Fulfil. Invt</th><th class='num'>Planning</th><th class='num'>Aktual</th><th>Capaian vs Plan</th><th>Aktual vs Invt</th><th class='num'>M1</th><th class='num'>M2</th><th class='num'>M3</th><th class='num'>M4</th></tr>";
+  document.querySelector("#tblFG tbody").innerHTML = fg.map(r=>{
+    const p = r.plan?r.actual/r.plan*100:0, pi = r.invt?r.actual/r.invt*100:0;
+    return `<tr><td>${r.product}</td><td class="num">${fmt(r.invt)}</td><td class="num">${fmt(r.plan)}</td><td class="num">${fmt(r.actual)}</td><td><span class="${p>100?'over':''}">${r.plan?fmt(p,1)+"%":"-"}</span><div class="bar"><div style="width:${Math.min(p,100)}%${p>100?';background:#ef4444':''}"></div></div></td><td class="num">${r.invt?fmt(pi,2)+"%":"-"}</td><td class="num">${fmt(r.m1)}</td><td class="num">${fmt(r.m2)}</td><td class="num">${fmt(r.m3)}</td><td class="num">${fmt(r.m4)}</td></tr>`;
+  }).join("");
+
+  drawCharts(rm, fg);
+}
+
+function mk(id, cfg){
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), cfg);
+}
+const TICK = {color:"#94a3b8"};
+function drawCharts(rm, fg){
+  mk("chRM",{type:"bar",
+    data:{labels:rm.map(r=>r.material),datasets:[
+      {label:"Planning (Kg)",data:rm.map(r=>r.plan),backgroundColor:"#3b82f6"},
+      {label:"Aktual (Kg)",data:rm.map(r=>r.actual),backgroundColor:"#22c55e"}]},
+    options:{indexAxis:"y",responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:TICK},y:{ticks:{...TICK,font:{size:11}}}}}});
+  mk("chFG",{type:"bar",
+    data:{labels:fg.map(r=>r.product),datasets:[
+      {label:"Planning (Pack)",data:fg.map(r=>r.plan),backgroundColor:"#a78bfa"},
+      {label:"Aktual (Pack)",data:fg.map(r=>r.actual),backgroundColor:"#f59e0b"}]},
+    options:{indexAxis:"y",responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:TICK},y:{ticks:{...TICK,font:{size:11}}}}}});
+  mk("chAch",{type:"bar",
+    data:{labels:fg.map(r=>r.product),datasets:[
+      {label:"Capaian %",type:"bar",data:fg.map(r=>r.plan?+(r.actual/r.plan*100).toFixed(1):0),
+        backgroundColor:fg.map(r=>(r.plan&&r.actual>r.plan)?"#ef4444":"#22c55e")},
+      {label:"Target 100%",type:"line",data:fg.map(()=>100),borderColor:"#f59e0b",borderDash:[6,4],pointRadius:0}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:"#e2e8f0"}}},scales:{x:{ticks:{...TICK,font:{size:11}}},y:{ticks:{...TICK,callback:v=>v+"%"}}}}});
+}
+
+function resetCountdown(){
+  clearInterval(refreshTimer); clearInterval(countdownTimer);
+  const iv = Math.max(15, parseInt(document.getElementById("fInterval").value||"60"));
+  countdownSec = iv;
+  document.getElementById("countdown").textContent = countdownSec;
+  countdownTimer = setInterval(()=>{ countdownSec--; if(countdownSec<0) countdownSec=iv; document.getElementById("countdown").textContent = countdownSec; },1000);
+  refreshTimer = setInterval(loadData, iv*1000);
+}
+
+document.getElementById("btnRefresh").onclick = loadData;
+document.getElementById("btnReset").onclick = ()=>{ document.getElementById("fKat").value=""; document.getElementById("q").value=""; render(); };
+document.getElementById("fKat").onchange = render;
+document.getElementById("q").oninput = render;
+document.getElementById("fInterval").onchange = resetCountdown;
+loadData();
+</script>
+</body>
+</html>
