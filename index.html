@@ -60,8 +60,10 @@
     <div><label>Shift</label><select id="fShift"><option value="">Semua</option><option>Shift 1</option><option>Shift 2</option></select></div>
     <div><label>Produk</label><select id="fProduk"><option value="">Semua</option><option>Small</option><option>Large</option></select></div>
     <div><label>Leader</label><select id="fLeader"><option value="">Semua</option></select></div>
+    <div><label>Dari tanggal</label><input id="fFrom" type="date"></div>
+    <div><label>Sampai tanggal</label><input id="fTo" type="date"></div>
     <div><label>Auto-refresh (detik)</label><input id="fInterval" type="number" value="60" min="15" style="width:90px"></div>
-    <div><label>&nbsp;</label><button id="btnApply" class="secondary">Terapkan Filter</button></div>
+    <div><label>&nbsp;</label><button id="btnApply" class="secondary">Terapkan Filter</button> <button id="btnReset" class="secondary" style="margin-left:6px">Reset</button></div>
   </div>
 
   <div class="kpis" id="kpis"></div>
@@ -124,6 +126,18 @@ function parseID(v){
   return isNaN(n)?0:n;
 }
 function fmt(n, dec=0){ return n.toLocaleString("id-ID",{minimumFractionDigits:dec, maximumFractionDigits:dec}); }
+const BULAN_ID = {jan:0,januari:0,feb:1,februari:1,mar:2,maret:2,apr:3,april:3,mei:4,may:4,jun:5,juni:5,jul:6,juli:6,agu:7,agus:7,agustus:7,agt:7,sep:8,september:8,okt:9,oktober:9,oct:9,nov:10,november:10,des:11,desember:11,dec:11,december:11};
+// "01-Agu-2026" / "25 Agu-2026" -> "2026-08-01" ("" jika tak dikenali)
+function parseTanggal(s){
+  if(!s) return "";
+  const m = String(s).trim().match(/(\d{1,2})[\s\-\/\.]+([A-Za-z]+)[\s\-\/\.]+(\d{2,4})/);
+  if(!m) return "";
+  let y = parseInt(m[3]); if(y<100) y += 2000;
+  const mo = BULAN_ID[m[2].toLowerCase()];
+  if(mo===undefined) return "";
+  const d = String(parseInt(m[1])).padStart(2,"0");
+  return `${y}-${String(mo+1).padStart(2,"0")}-${d}`;
+}
 
 function setStatus(mode, text){
   const el = document.getElementById("status");
@@ -151,6 +165,7 @@ async function loadData(){
       if(!r[1] && !r[2] && !r[12]) continue;
       data.push({
         Tanggal: tgl,
+        DateISO: parseTanggal(tgl),
         Bulan: (r[1]||"").trim(),
         Shift: (r[2]||"").trim(),
         Leader: (r[3]||"").trim(),
@@ -191,14 +206,23 @@ function buildFilterOptions(){
   fL.innerHTML = '<option value="">Semua</option>'+leaders.map(b=>`<option>${b}</option>`).join("");
   if(bulans.includes(curB)) fB.value = curB;
   if(leaders.includes(curL)) fL.value = curL;
+  // batas rentang tanggal dari data (jangan timpa pilihan user yg sudah ada)
+  const isos = RAW.map(r=>r.DateISO).filter(Boolean).sort();
+  if(isos.length){
+    const fFrom = document.getElementById("fFrom"), fTo = document.getElementById("fTo");
+    fFrom.min = isos[0]; fFrom.max = isos[isos.length-1];
+    fTo.min = isos[0]; fTo.max = isos[isos.length-1];
+  }
 }
 
 function filtered(){
   const b=document.getElementById("fBulan").value, s=document.getElementById("fShift").value,
         p=document.getElementById("fProduk").value, l=document.getElementById("fLeader").value,
+        from=document.getElementById("fFrom").value, to=document.getElementById("fTo").value,
         q=(document.getElementById("q").value||"").toLowerCase();
   return RAW.filter(r =>
     (!b||r.Bulan===b)&&(!s||r.Shift===s)&&(!p||r.Produk===p)&&(!l||r.Leader===l)&&
+    (!from||(r.DateISO&&r.DateISO>=from))&&(!to||(r.DateISO&&r.DateISO<=to))&&
     (!q||(r.Tanggal+r.Leader+r.Shift+r.Produk).toLowerCase().includes(q))
   );
 }
@@ -211,6 +235,7 @@ function render(){
         totRKg=sum("RejectKg"), totW=sum("WasteKg"), totRPcs=sum("RejectPcs"),
         totMP=sum("ManPower");
   const avgSpeed = rows.length? rows.reduce((a,r)=>a+r.Speed,0)/rows.length : 0;
+  const avgMP = rows.length? totMP/rows.length : 0;
   const rejRate = totPcs? totRPcs/totPcs*100 : 0;
   const uniqDates = new Set(rows.map(r=>r.Tanggal)).size;
   const kpis = [
@@ -219,7 +244,7 @@ function render(){
     ["Reject", fmt(totRKg,1)+" kg", fmt(totRPcs)+" pcs • "+fmt(rejRate,2)+" % dari output"],
     ["Waste + Other Loss", fmt(totW,1)+" kg", "Waste "+fmt(totW,1)+" kg • Other "+fmt(sum("OtherLoss"),0)+" kg"],
     ["Rata-rata Speed", fmt(avgSpeed,2)+" pcs/dtk", "Rata-rata cycle "+fmt(rows.length?rows.reduce((a,r)=>a+r.Cycle,0)/rows.length:0,2)+" dtk/pcs"],
-    ["Man Power (akumulasi)", fmt(totMP)+" org-shift", fmt(totPcs/Math.max(totMP,1),0)+" pcs per org-shift"],
+    ["Man Power (rata-rata)", fmt(avgMP,1)+" org", "Total "+fmt(totMP)+" org-shift • "+fmt(totPcs/Math.max(totMP,1),0)+" pcs per org-shift"],
   ];
   document.getElementById("kpis").innerHTML = kpis.map((k,i)=>`<div class="kpi" style="border-color:${["#3b82f6","#22c55e","#ef4444","#f59e0b","#a78bfa","#06b6d4"][i]}"><small>${k[0]}</small><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join("");
 
@@ -283,7 +308,13 @@ function resetCountdown(){
 
 document.getElementById("btnRefresh").onclick = loadData;
 document.getElementById("btnApply").onclick = render;
-["fBulan","fShift","fProduk","fLeader"].forEach(id=>document.getElementById(id).onchange=render);
+document.getElementById("btnReset").onclick = ()=>{
+  document.getElementById("fBulan").value=""; document.getElementById("fShift").value="";
+  document.getElementById("fProduk").value=""; document.getElementById("fLeader").value="";
+  document.getElementById("fFrom").value=""; document.getElementById("fTo").value="";
+  document.getElementById("q").value=""; render();
+};
+["fBulan","fShift","fProduk","fLeader","fFrom","fTo"].forEach(id=>document.getElementById(id).onchange=render);
 document.getElementById("q").oninput = render;
 document.getElementById("fInterval").onchange = resetCountdown;
 loadData();
